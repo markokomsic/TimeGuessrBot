@@ -1,11 +1,15 @@
+const db = require('../config/db');
+
 class Score {
     static async create(playerId, roundNumber, points, accuracy) {
-        const { rows } = await require('../config/db').query(
+        console.log(`Creating score for player ${playerId}, round ${roundNumber}`);
+        const { rows } = await db.query(
             `INSERT INTO scores (player_id, round_number, points, accuracy, created_at)
        VALUES ($1, $2, $3, $4, NOW())
        RETURNING *`,
             [playerId, roundNumber, points, accuracy]
         );
+        console.log(`Score created:`, rows[0]);
         return rows[0];
     }
 

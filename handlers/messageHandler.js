@@ -5,16 +5,31 @@ class MessageHandler {
     static async handle(message) {
         console.log(`📩 Message from ${message.from}: ${message.body}`);
 
-        // Process scores
-        const score = await ScoreService.processScore(message);
-        if (score) {
-            console.log(`✅ Score recorded for round ${score.round_number}`);
-        }
+        try {
+            // Handle ping command
+            if (message.body === '!ping') {
+                await message.reply('TimeGuessr Bot is working! 🎯');
+                return;
+            }
 
-        // Handle leaderboard command
-        if (message.body === '!leaderboard') {
-            const leaderboard = await Leaderboard.generate();
-            message.reply(leaderboard);
+            // Handle leaderboard command
+            if (message.body === '!leaderboard') {
+                const leaderboard = await Leaderboard.generate();
+                await message.reply(leaderboard);
+                return;
+            }
+
+            // Process scores
+            const result = await ScoreService.processScore(message);
+            if (result) {
+                const { score, playerName } = result;
+                await message.reply(
+                    `✅ Score saved for ${playerName}!\n` +
+                    `🎯 Game #${score.round_number}: ${score.points.toLocaleString()} points (${score.accuracy}%)`
+                );
+            }
+        } catch (error) {
+            console.error('Error handling message:', error);
         }
     }
 }
