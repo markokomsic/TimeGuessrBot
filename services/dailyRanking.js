@@ -41,6 +41,23 @@ class DailyRanking {
 
         return rankings;
     }
+
+    // NEW METHOD: Get rankings for a specific game
+    static async getRankingsForGame(gameNumber) {
+        const { rows } = await db.query(`
+            SELECT 
+                dr.player_id,
+                dr.rank,
+                dr.points_awarded,
+                p.name
+            FROM daily_rankings dr
+            JOIN players p ON dr.player_id = p.id
+            WHERE dr.game_number = $1
+            ORDER BY dr.rank
+        `, [gameNumber]);
+
+        return rows;
+    }
 }
 
 module.exports = DailyRanking;
