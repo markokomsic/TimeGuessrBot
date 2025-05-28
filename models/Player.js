@@ -4,7 +4,7 @@ class Player {
     static async findOrCreate(waId, name) {
         console.log(`Finding or creating player: ${waId}, ${name}`);
         const { rows } = await db.query(
-            `INSERT INTO players (wa_id, name) 
+      `INSERT INTO players (wa_id, name) 
        VALUES ($1, $2) 
        ON CONFLICT (wa_id) DO UPDATE SET name = $2 
        RETURNING *`,

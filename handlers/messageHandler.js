@@ -56,6 +56,19 @@ class MessageHandler {
                     console.log(`Updating daily rankings for game #${savedScore.game_number}`);
                     await DailyRanking.calculateForGame(savedScore.game_number);
                     console.log('Daily rankings updated successfully');
+
+                    // Notify if user got top 3 placement
+                    const rankings = await DailyRanking.getRankingsForGame(savedScore.game_number);
+                    const playerRank = rankings.find(r => r.player_id === savedScore.player_id);
+
+                    if (playerRank && playerRank.rank <= 3) {
+                        const emoji = playerRank.rank === 1 ? '🥇' :
+                            playerRank.rank === 2 ? '🥈' : '🥉';
+                        await message.reply(
+                            `${emoji} Congratulations! You're #${playerRank.rank} today!\n` +
+                            `⭐ You earned ${playerRank.points_awarded} league points!`
+                        );
+                    }
                 } catch (rankingError) {
                     console.error('❌ Error updating daily rankings:', rankingError);
                 }

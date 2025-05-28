@@ -3,11 +3,10 @@ const { MongoStore } = require('wwebjs-mongo');
 const mongoose = require('mongoose');
 const qrcode = require('qrcode-terminal');
 require('dotenv').config();
+const cron = require('node-cron');
 
 // Database setup
 require('./config/db');
-// After all other imports
-require('./schedules/weeklyJob');
 
 // Initialize MongoDB for WhatsApp session
 mongoose.connect(process.env.MONGODB_URI).then(() => {
@@ -26,7 +25,9 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
 
     // QR Code generation
     client.on('qr', qr => {
-        qrcode.generate(qr, { small: true });
+        const data = encodeURIComponent(qr);
+        const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${data}`;
+        console.log('Scan me here:', url);
     });
 
     // Session saved confirmation
@@ -47,6 +48,20 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
 
     // Start the bot
     client.initialize();
+
+
+    // Start weekly calculation job
+    const WeeklyPoints = require('./services/weeklyPoints');
+    cron.schedule('59 23 * * 0', async () => { // Every Sunday at 23:59
+        try {
+            const weekStart = WeeklyPoints.getCurrentWeekStart();
+            console.log(`Calculating weekly points for week starting ${weekStart}`);
+            await WeeklyPoints.calculateForWeek(weekStart);
+            console.log('Weekly points calculation completed');
+        } catch (error) {
+            console.error('Weekly points job failed:', error);
+        }
+
 }).catch(err => {
     console.error('❌ MongoDB connection error:', err);
 });
