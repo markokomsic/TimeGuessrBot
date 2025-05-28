@@ -6,6 +6,8 @@ require('dotenv').config();
 
 // Database setup
 require('./config/db');
+// After all other imports
+require('./schedules/weeklyJob');
 
 // Initialize MongoDB for WhatsApp session
 mongoose.connect(process.env.MONGODB_URI).then(() => {

@@ -1,5 +1,6 @@
 ﻿const ScoreService = require('../services/scoreService');
 const Leaderboard = require('../services/leaderboard');
+const DailyRanking = require('../services/dailyRanking');
 
 class MessageHandler {
     static async handle(message) {
@@ -13,10 +14,26 @@ class MessageHandler {
                 return;
             }
 
-            // Handle leaderboard command
-            if (message.body === '!leaderboard') {
+            // Handle leaderboard commands
+            if (message.body.startsWith('!leaderboard')) {
                 console.log('Handling leaderboard command');
-                const leaderboard = await Leaderboard.generate();
+
+                // Extract leaderboard type (default to weekly)
+                const parts = message.body.split(' ');
+                const type = parts.length > 1 ? parts[1] : 'weekly';
+
+                // Validate type
+                const validTypes = ['daily', 'weekly'];
+                if (!validTypes.includes(type)) {
+                    await message.reply(
+                        '❌ Invalid leaderboard type. Use:\n' +
+                        '• `!leaderboard daily` for daily rankings\n' +
+                        '• `!leaderboard weekly` for weekly rankings'
+                    );
+                    return;
+                }
+
+                const leaderboard = await Leaderboard.generate(type);
                 await message.reply(leaderboard);
                 return;
             }
@@ -27,10 +44,21 @@ class MessageHandler {
             if (result) {
                 console.log('Score processed successfully:', result);
                 const { score: savedScore, playerName } = result;
+
+                // Send confirmation to user
                 await message.reply(
                     `✅ Score saved for ${playerName}!\n` +
                     `🎯 Game #${savedScore.game_number}: ${savedScore.score.toLocaleString()} points (${savedScore.percentage}%)`
                 );
+
+                // Update daily rankings
+                try {
+                    console.log(`Updating daily rankings for game #${savedScore.game_number}`);
+                    await DailyRanking.calculateForGame(savedScore.game_number);
+                    console.log('Daily rankings updated successfully');
+                } catch (rankingError) {
+                    console.error('❌ Error updating daily rankings:', rankingError);
+                }
             } else {
                 console.log('No score pattern matched or score already submitted');
             }
