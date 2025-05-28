@@ -24,10 +24,11 @@ mongoose.connect(MONGODB_URI).then(() => {
         }
     });
 
-    // QR Code generation
     client.on('qr', qr => {
-        qrcode.generate(qr, { small: true });
-    });
+  const data = encodeURIComponent(qr);
+  const url  = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${data}`;
+  console.log('Scan me here:', url);
+});
 
     // Session saved confirmation
     client.on('remote_session_saved', () => {
