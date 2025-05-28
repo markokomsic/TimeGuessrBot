@@ -61,7 +61,7 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
         } catch (error) {
             console.error('Weekly points job failed:', error);
         }
-
+    });
 }).catch(err => {
     console.error('❌ MongoDB connection error:', err);
 });
