@@ -12,8 +12,12 @@ class ScoreService {
         // Get sender info
         const sender = message.from.includes('@c.us') ? message.from : message.author;
         const contact = await message.getContact();
-        const playerName = contact.pushname || contact.name || contact.number || 'Unknown Player';
-
+        let playerName = contact.pushname || contact.name || 'Unknown Player';
+        if (playerName === 'Unknown Player' && contact.number) {
+            // Extract first name from number format
+            playerName = contact.number.split('@')[0].replace(/\D/g, '');
+            playerName = playerName.slice(-9); // Last 9 digits of phone number
+        }
         try {
             const hasSubmitted = await Score.hasSubmittedToday(sender, scoreData.gameNumber);
             if (hasSubmitted) {
