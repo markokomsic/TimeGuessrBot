@@ -9,7 +9,7 @@ class ScoreService {
         const scoreData = this.parseTimeGuessrScore(text);
         if (!scoreData) return null;
 
-        // Get sender info - replicate old behavior
+        // Get sender info
         let senderNumber = '';
         let senderName = 'Unknown Player';
 
@@ -33,7 +33,7 @@ class ScoreService {
         try {
             const hasSubmitted = await Score.hasSubmittedToday(senderNumber, scoreData.gameNumber);
             if (hasSubmitted) {
-                await message.reply(`You've already submitted your score for today!`);
+                await message.reply(`Već si poslao rezultat za danas, ohladi malo!`);
                 return null;
             }
 

@@ -91,7 +91,7 @@ class MessageHandler {
 
                             await message.reply(
                                 `${emoji} Čestitamo! ${rankText} ste danas!\n` +
-                                `⭐ Zaradili ste ${playerRank.points_awarded} liga bodova!`
+                                `⭐ Zaradili ste ${playerRank.points_awarded} ligaških bodova!`
                             );
                         }
                     } catch (rankFetchError) {

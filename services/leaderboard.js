@@ -11,17 +11,17 @@ class Leaderboard {
                 case 'weekly-snapshot': // For end-of-week saved results
                     return await this.generateWeeklySnapshot();
                 default:
-                    return 'Invalid leaderboard type';
+                    return 'Neispravan tip ljestvice';
             }
         } catch (error) {
-            console.error('Leaderboard error:', error);
-            return '❌ Error generating leaderboard';
+            console.error('Greška u ljestvici:', error);
+            return '❌ Greška pri generiranju ljestvice';
         }
     }
 
     static async generateDaily() {
         const gameNumber = await this.getTodaysGameNumber();
-        if (!gameNumber) return 'Nije pronađena danas igra!';
+        if (!gameNumber) return 'Nije pronađena današnja igra!';
 
         // Get daily rankings
         const { rows } = await db.query(`
@@ -48,7 +48,7 @@ class Leaderboard {
             WHERE s.game_number = $1
         `, [gameNumber]);
 
-        const averages = avgResult.rows[0];
+        const averages = avgResult.rows[0] || { avg_score: 0, avg_accuracy: 0 };
 
         // Format results
         return this.formatDailyResults(rows, gameNumber, averages);
@@ -60,52 +60,52 @@ class Leaderboard {
         weekEnd.setDate(weekEnd.getDate() + 6);
         const weekRange = `${this.formatCroatianDate(weekStart)} - ${this.formatCroatianDate(weekEnd)}`;
 
-        // Calculate real-time weekly rankings from daily_rankings (same logic as your WeeklyPoints service)
+        // Get weekly stats without bonuses
         const { rows } = await db.query(`
-            WITH weekly_stats AS (
-                SELECT 
-                    dr.player_id,
-                    p.name,
-                    SUM(dr.points_awarded) AS total_points,
-                    COUNT(dr.id) FILTER (WHERE dr.rank = 1) AS daily_wins,
-                    MAX(s.score) AS highest_score,
-                    COUNT(DISTINCT dr.game_number) AS games_played,
-                    SUM(s.score) AS total_daily_scores,
-                    ROUND(AVG(s.score)) AS avg_score,
-                    ROUND(AVG(s.percentage)) AS avg_accuracy
-                FROM daily_rankings dr
-                JOIN scores s ON dr.game_number = s.game_number AND dr.player_id = s.player_id
-                JOIN players p ON dr.player_id = p.id
-                WHERE dr.created_at BETWEEN $1 AND $2
-                GROUP BY dr.player_id, p.name
-            ),
-            weekly_bonuses AS (
-                SELECT 
-                    ws.*,
-                    -- Bonus calculation (same logic as your WeeklyPoints service)
-                    CASE 
-                        WHEN ws.daily_wins = (SELECT MAX(daily_wins) FROM weekly_stats) 
-                        THEN 50 
-                        ELSE 0 
-                    END AS win_bonus,
-                    CASE 
-                        WHEN ws.highest_score = (SELECT MAX(highest_score) FROM weekly_stats)
-                        THEN 30 
-                        ELSE 0 
-                    END AS score_bonus
-                FROM weekly_stats ws
-            )
             SELECT 
-                *,
-                (total_points + win_bonus + score_bonus) AS final_total,
-                (win_bonus + score_bonus) AS total_bonus
-            FROM weekly_bonuses
-            ORDER BY final_total DESC, highest_score DESC
+                p.name,
+                SUM(dr.points_awarded) AS base_points,
+                COUNT(dr.id) FILTER (WHERE dr.rank = 1) AS daily_wins,
+                MAX(s.score) AS highest_score,
+                AVG(s.score) AS average_score,
+                SUM(s.score) AS total_daily_scores,
+                COUNT(DISTINCT dr.game_number) AS games_played
+            FROM daily_rankings dr
+            JOIN scores s ON dr.game_number = s.game_number AND dr.player_id = s.player_id
+            JOIN players p ON dr.player_id = p.id
+            WHERE dr.created_at BETWEEN $1 AND $2
+            GROUP BY p.name
+            ORDER BY base_points DESC
             LIMIT 10
         `, [weekStart, weekEnd]);
 
+        if (rows.length === 0) {
+            return `🏆 Tjedna ljestvica (${weekRange})\n\nNema podataka za ovaj tjedan.`;
+        }
+
+        // Identify bonus contenders
+        const mostWins = Math.max(...rows.map(p => p.daily_wins));
+        const highestScore = Math.max(...rows.map(p => p.highest_score));
+
+        const playersWithContenders = rows.map(player => {
+            const bonuses = [];
+
+            if (player.daily_wins === mostWins) {
+                bonuses.push('👑 Najviše pobjeda');
+            }
+
+            if (player.highest_score === highestScore) {
+                bonuses.push('🚀 Najveći rezultat');
+            }
+
+            return {
+                ...player,
+                bonuses
+            };
+        });
+
         // Format results
-        return this.formatWeeklyResults(rows, weekRange, true); // true for real-time
+        return this.formatWeeklyResults(playersWithContenders, weekRange);
     }
 
     static async generateWeeklySnapshot() {
@@ -114,13 +114,13 @@ class Leaderboard {
         weekEnd.setDate(weekEnd.getDate() + 6);
         const weekRange = `${this.formatCroatianDate(weekStart)} - ${this.formatCroatianDate(weekEnd)}`;
 
-        // Get saved weekly rankings from weekly_points table (your existing structure)
+        // Get saved weekly rankings
         const { rows } = await db.query(`
             SELECT 
                 p.name,
                 wp.total_points + wp.bonus_points AS final_total,
-                wp.total_points,
-                wp.bonus_points AS total_bonus,
+                wp.total_points AS base_points,
+                wp.bonus_points,
                 wp.daily_wins,
                 wp.highest_score,
                 (SELECT SUM(score) FROM scores s 
@@ -135,11 +135,11 @@ class Leaderboard {
         `, [weekStart, weekEnd]);
 
         if (rows.length === 0) {
-            return `🏆 Tjedna snimka (${weekRange})\n\n⏰ Tjedna snimka još nije spremljena. Koristite tjednu ljestvicu za trenutne rezultate.`;
+            return `🏆 Tjedna snimka (${weekRange})\n\n⏰ Tjedna snimka još nije spremljena.`;
         }
 
         // Format results
-        return this.formatWeeklyResults(rows, weekRange, false); // false for snapshot
+        return this.formatWeeklySnapshotResults(rows, weekRange);
     }
 
     static formatDailyResults(rows, gameNumber, averages) {
@@ -161,46 +161,26 @@ class Leaderboard {
         return message;
     }
 
-    static formatWeeklyResults(rows, weekRange, isRealTime = true) {
-        if (rows.length === 0) {
-            return `🏆 Tjedna ljestvica (${weekRange})\n\nNema tjednih podataka`;
+    static formatWeeklyResults(players, weekRange) {
+        if (players.length === 0) {
+            return `🏆 Tjedna ljestvica (${weekRange})\n\nNema podataka`;
         }
 
-        const typeIndicator = isRealTime ? '🔴 *UŽIVO*' : '📸 *SNIMKA*';
-        let message = `🏆 *Tjedna ljestvica (${weekRange})* ${typeIndicator}\n\n`;
+        let message = `🏆 *Tjedna ljestvica (${weekRange})* 🔴 *UŽIVO*\n\n`;
+        message += "💡 Bonusi nisu uključeni u rezultate\n\n";
 
-        rows.forEach((player, idx) => {
+        players.forEach((player, idx) => {
             const rankEmoji = idx === 0 ? '🥇' :
                 idx === 1 ? '🥈' :
                     idx === 2 ? '🥉' : `${idx + 1}.`;
 
             message += `${rankEmoji} *${player.name}*\n`;
-            message += `   🎯 Ukupno bodova: ${player.final_total}\n`;
+            message += `   🎯 Tjedni bodovi: ${player.base_points}\n`;
+            message += `   📊 Tjedna suma: ${player.total_daily_scores.toLocaleString()} bodova\n`;
+            message += `   ⭐ Prosjek: ${Math.round(player.average_score).toLocaleString()} bodova\n`;
 
-            if (isRealTime) {
-                message += `   📊 Dnevni rezultati: ${player.total_daily_scores?.toLocaleString() || 0} bodova (${player.games_played} igara)\n`;
-                message += `   ⚡ Osnovno: ${player.total_points} | ✨ Bonus: ${player.total_bonus}\n`;
-                message += `   📈 Prosjek: ${player.avg_score?.toLocaleString() || 0} bodova (${player.avg_accuracy || 0}%)\n`;
-            } else {
-                message += `   📊 Dnevni rezultati: ${player.total_daily_scores?.toLocaleString() || 0} bodova\n`;
-                message += `   ⚡ Osnovno: ${player.total_points} | ✨ Bonus: ${player.total_bonus}\n`;
-            }
-
-            // Show bonus details
-            if (player.total_bonus > 0) {
-                message += `   🎖️ Bonusi: `;
-                const bonuses = [];
-
-                if (isRealTime) {
-                    if (player.win_bonus > 0) bonuses.push(`Najviše pobjeda (${player.daily_wins}x)`);
-                    if (player.score_bonus > 0) bonuses.push(`Najveći rezultat (${player.highest_score?.toLocaleString() || 0} bodova)`);
-                } else {
-                    // For snapshots, reconstruct bonus info from total
-                    if (player.total_bonus >= 50) bonuses.push(`Najviše pobjeda (${player.daily_wins}x)`);
-                    if (player.total_bonus === 30 || player.total_bonus === 80) bonuses.push(`Najveći rezultat (${player.highest_score?.toLocaleString() || 0} bodova)`);
-                }
-
-                message += bonuses.join(' + ') + '\n';
+            if (player.bonuses.length > 0) {
+                message += `   🏅 ${player.bonuses.join(' • ')}\n`;
             }
 
             message += '\n';
@@ -209,17 +189,49 @@ class Leaderboard {
         return message;
     }
 
-    // Helper functions (matching your existing logic)
+    static formatWeeklySnapshotResults(players, weekRange) {
+        if (players.length === 0) {
+            return `🏆 Tjedna snimka (${weekRange})\n\nNema podataka`;
+        }
+
+        let message = `🏆 *Tjedna snimka (${weekRange})* 📸\n\n`;
+        message += "🔒 Konačni rezultati sa bonusima\n\n";
+
+        players.forEach((player, idx) => {
+            const rankEmoji = idx === 0 ? '🥇' :
+                idx === 1 ? '🥈' :
+                    idx === 2 ? '🥉' : `${idx + 1}.`;
+
+            message += `${rankEmoji} *${player.name}*\n`;
+            message += `   🎯 Ukupno bodova: ${player.final_total}\n`;
+            message += `   ⚡ Osnovno: ${player.base_points} | ✨ Bonus: ${player.bonus_points}\n`;
+            message += `   📊 Tjedna suma: ${player.total_daily_scores.toLocaleString()} bodova\n`;
+
+            // Show bonus details
+            const bonuses = [];
+            if (player.bonus_points >= 50) bonuses.push(`👑 Najviše pobjeda (${player.daily_wins}x)`);
+            if (player.bonus_points >= 30) bonuses.push(`🚀 Najveći rezultat (${player.highest_score.toLocaleString()} bodova)`);
+
+            if (bonuses.length > 0) {
+                message += `   🏅 ${bonuses.join(' • ')}\n`;
+            }
+
+            message += '\n';
+        });
+
+        return message;
+    }
+
+    // Helper functions
     static getCurrentWeekStart() {
         const now = new Date();
         const day = now.getDay();
         const diff = now.getDate() - day + (day === 0 ? -6 : 1);
         const weekStart = new Date(now.setDate(diff));
         weekStart.setHours(0, 0, 0, 0);
-        return weekStart;
+        return weekStart.toISOString().split('T')[0];
     }
 
-    // Croatian date formatting
     static formatCroatianDate(dateStr) {
         const date = new Date(dateStr);
         return date.toLocaleDateString('hr-HR', {
