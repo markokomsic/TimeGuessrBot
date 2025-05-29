@@ -9,23 +9,35 @@ class ScoreService {
         const scoreData = this.parseTimeGuessrScore(text);
         if (!scoreData) return null;
 
-        // Get sender info
-        const sender = message.from.includes('@c.us') ? message.from : message.author;
-        const contact = await message.getContact();
-        let playerName = contact.pushname || contact.name || 'Unknown Player';
-        if (playerName === 'Unknown Player' && contact.number) {
-            // Extract first name from number format
-            playerName = contact.number.split('@')[0].replace(/\D/g, '');
-            playerName = playerName.slice(-9); // Last 9 digits of phone number
-        }
+        // Get sender info - replicate old behavior
+        let senderNumber = '';
+        let senderName = 'Unknown Player';
+
         try {
-            const hasSubmitted = await Score.hasSubmittedToday(sender, scoreData.gameNumber);
+            const contact = await message.getContact();
+            senderName = contact.pushname || contact.name || 'Unknown Player';
+
+            // Determine sender number based on message context
+            if (message.from.endsWith('@g.us')) {
+                // Group message - use message.author
+                senderNumber = message.author.replace('@c.us', '');
+            } else {
+                // Private message - use message.from
+                senderNumber = message.from.replace('@c.us', '');
+            }
+        } catch (error) {
+            console.error('Error getting contact:', error);
+            return null;
+        }
+
+        try {
+            const hasSubmitted = await Score.hasSubmittedToday(senderNumber, scoreData.gameNumber);
             if (hasSubmitted) {
                 await message.reply(`You've already submitted your score for today!`);
                 return null;
             }
 
-            const player = await Player.findOrCreate(sender, playerName);
+            const player = await Player.findOrCreate(senderNumber, senderName);
             const savedScore = await Score.create({
                 playerId: player.id,
                 gameNumber: scoreData.gameNumber,
@@ -38,7 +50,7 @@ class ScoreService {
 
             return {
                 score: savedScore,
-                playerName
+                playerName: senderName
             };
         } catch (error) {
             console.error('Error saving score:', error);

@@ -1,15 +1,18 @@
 const db = require('../config/db');
 
 class Player {
-    static async findOrCreate(waId, name) {
-        console.log(`Finding or creating player: ${waId}, ${name}`);
+    static async findOrCreate(phoneNumber, name) {
+        console.log(`Finding or creating player: ${phoneNumber}, ${name}`);
+
         const { rows } = await db.query(
-      `INSERT INTO players (wa_id, name) 
-       VALUES ($1, $2) 
-       ON CONFLICT (wa_id) DO UPDATE SET name = $2 
-       RETURNING *`,
-            [waId, name]
+            `INSERT INTO players (phone_number, name) 
+             VALUES ($1, $2) 
+             ON CONFLICT (phone_number) DO UPDATE SET 
+                 name = EXCLUDED.name
+             RETURNING *`,
+            [phoneNumber, name]
         );
+
         console.log(`Player operation result:`, rows[0]);
         return rows[0];
     }
