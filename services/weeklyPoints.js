@@ -45,6 +45,16 @@ class WeeklyPoints {
 
         return rows;
     }
+
+    // ADD THIS METHOD to your existing WeeklyPoints service
+    static getCurrentWeekStart() {
+        const now = new Date();
+        const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        const weekStart = new Date(now.setDate(diff));
+        weekStart.setHours(0, 0, 0, 0);
+        return weekStart;
+    }
 }
 
 module.exports = WeeklyPoints;

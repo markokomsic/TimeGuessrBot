@@ -10,45 +10,65 @@ class MessageHandler {
             // Handle ping command
             if (message.body === '!ping') {
                 console.log('Handling ping command');
-                await message.reply('TimeGuessr Bot is working! 🎯');
+                await message.reply('TimeGuessr Bot radi! 🎯');
                 return;
             }
 
-            // Handle leaderboard commands
-            if (message.body.startsWith('!leaderboard')) {
-                console.log('Handling leaderboard command');
-
-                // Extract leaderboard type (default to weekly)
-                const parts = message.body.split(' ');
-                const type = parts.length > 1 ? parts[1] : 'weekly';
-
-                // Validate type
-                const validTypes = ['daily', 'weekly'];
-                if (!validTypes.includes(type)) {
-                    await message.reply(
-                        '❌ Invalid leaderboard type. Use:\n' +
-                        '• `!leaderboard daily` for daily rankings\n' +
-                        '• `!leaderboard weekly` for weekly rankings'
-                    );
-                    return;
-                }
-
-                const leaderboard = await Leaderboard.generate(type);
+            // Handle daily leaderboard command (!d)
+            if (message.body === '!d') {
+                console.log('Handling daily leaderboard command');
+                const leaderboard = await Leaderboard.generate('daily');
                 await message.reply(leaderboard);
+                return;
+            }
+
+            // Handle weekly real-time leaderboard command (!w)
+            if (message.body === '!w') {
+                console.log('Handling weekly real-time leaderboard command');
+                const leaderboard = await Leaderboard.generate('weekly');
+                await message.reply(leaderboard);
+                return;
+            }
+
+            // Handle leaderboard command (for snapshots - can be used for all-time later)
+            if (message.body.startsWith('!leaderboard')) {
+                console.log('Handling leaderboard snapshot command');
+                // For now, show weekly snapshot. Later you can add all-time here
+                const leaderboard = await Leaderboard.generate('weekly-snapshot');
+                await message.reply(leaderboard);
+                return;
+            }
+
+            // Handle help command
+            if (message.body === '!help' || message.body === '!pomoć') {
+                console.log('Handling help command');
+                const helpMessage = `🎯 *TimeGuessr Bot Naredbe* 🎯\n\n` +
+                    `📊 *Ljestvice:*\n` +
+                    `• \`!d\` - Dnevna ljestvica\n` +
+                    `• \`!w\` - Tjedna ljestvica (uživo)\n` +
+                    `• \`!leaderboard\` - Tjedna snimka\n\n` +
+                    `🔧 *Ostalo:*\n` +
+                    `• \`!ping\` - Provjeri je li bot aktivan\n` +
+                    `• \`!pomoć\` - Prikaži ovu poruku\n\n` +
+                    `🎮 *Kako poslati rezultat:*\n` +
+                    `Proslijedi poruku iz TimeGuessr igre koja sadrži tvoj rezultat!`;
+
+                await message.reply(helpMessage);
                 return;
             }
 
             // Process scores
             console.log('Checking for score pattern...');
             const result = await ScoreService.processScore(message);
+
             if (result) {
                 console.log('Score processed successfully:', result);
                 const { score: savedScore, playerName } = result;
 
-                // Send confirmation to user
+                // Send confirmation to user (in Croatian)
                 await message.reply(
-                    `✅ Score saved for ${playerName}!\n` +
-                    `🎯 Game #${savedScore.game_number}: ${savedScore.score.toLocaleString()} points (${savedScore.percentage}%)`
+                    `✅ Rezultat spremljen za ${playerName}!\n` +
+                    `🎯 Igra #${savedScore.game_number}: ${savedScore.score.toLocaleString()} bodova (${savedScore.percentage}%)`
                 );
 
                 // Update daily rankings
@@ -65,9 +85,13 @@ class MessageHandler {
                         if (playerRank && playerRank.rank <= 3) {
                             const emoji = playerRank.rank === 1 ? '🥇' :
                                 playerRank.rank === 2 ? '🥈' : '🥉';
+
+                            const rankText = playerRank.rank === 1 ? 'prvi' :
+                                playerRank.rank === 2 ? 'drugi' : 'treći';
+
                             await message.reply(
-                                `${emoji} Congratulations! You're #${playerRank.rank} today!\n` +
-                                `⭐ You earned ${playerRank.points_awarded} league points!`
+                                `${emoji} Čestitamo! ${rankText} ste danas!\n` +
+                                `⭐ Zaradili ste ${playerRank.points_awarded} liga bodova!`
                             );
                         }
                     } catch (rankFetchError) {
