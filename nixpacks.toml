@@ -1,21 +1,12 @@
 [phases.install]
 cmds = [
-    # Install dependencies
     "apt-get update",
     "apt-get install -y wget gnupg ca-certificates",
-    
-    # Modern key installation (no apt-key)
     "mkdir -p /etc/apt/keyrings",
-    "wget -q -O /etc/apt/keyrings/google-chrome.gpg https://dl.google.com/linux/linux_signing_key.pub",
-    
-    # Add repository with explicit keyring reference
+    "wget -qO- https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > /etc/apt/keyrings/google-chrome.gpg",
     "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main' > /etc/apt/sources.list.d/google-chrome.list",
-    
-    # Install Chrome
     "apt-get update",
     "apt-get install -y google-chrome-stable",
-    
-    # Install NPM dependencies
     "npm install"
 ]
 
