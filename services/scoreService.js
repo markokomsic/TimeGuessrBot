@@ -3,8 +3,29 @@ const Score = require('../models/Score');
 const db = require('../config/db');
 
 class ScoreService {
+    /**
+     * Returns the pure phone number of the sender, 
+     * whether it’s a 1:1 chat or a group message.
+     * Strips off the "@c.us" and ignores the group JID.
+     */
+    static getSenderNumber(message) {
+        const participant = message.participant;
+        const from = message.from;
+
+        let jid;
+        if (participant && participant.endsWith('@c.us')) {
+            jid = participant;
+        } else if (from && from.endsWith('@c.us')) {
+            jid = from;
+        } else {
+            return null;
+        }
+
+        const number = jid.split('@')[0];
+        return number.match(/^\d+$/) ? number : null;
+    }
+
     static async getTodaysGameNumber() {
-        // Get the highest game_number submitted today
         const { rows } = await db.query(`
             SELECT MAX(game_number) AS game_number
             FROM scores
@@ -20,43 +41,40 @@ class ScoreService {
         const scoreData = this.parseTimeGuessrScore(text);
         if (!scoreData) return null;
 
-        // Get sender info
-        let senderNumber = '';
-        let senderName = 'Unknown Player';
+        // Extract sender number
+        const senderNumber = this.getSenderNumber(message);
+        if (!senderNumber) {
+            await message.reply(
+                'Nije moguće prepoznati tvoj broj. Pošalji rezultat iz privatnog chatu ako si novi igrač.'
+            );
+            return null;
+        }
 
+        // Fetch sender name
+        let senderName = 'Unknown Player';
         try {
             const contact = await message.getContact();
-            senderName = contact.pushname || contact.name || 'Unknown Player';
-
-            if (message.from.endsWith('@g.us')) {
-                // Always use message.participant in groups
-                if (message.participant && message.participant.endsWith('@c.us')) {
-                    senderNumber = message.participant.replace('@c.us', '');
-                }
-            } else if (message.from.endsWith('@c.us')) {
-                senderNumber = message.from.replace('@c.us', '');
-            }
-        } catch (error) {
-            console.error('Error getting contact:', error);
-            return null;
+            senderName = contact.pushname || contact.name || senderName;
+        } catch (err) {
+            console.error('Error fetching contact:', err);
         }
 
-        if (!senderNumber.match(/^\d+$/)) {
-            await message.reply('Nije moguće prepoznati tvoj broj. Pošalji rezultat iz privatnog chata ako si novi igrač.');
-            return null;
-        }
-
-        // Check if the submitted round is today's round
+        // Validate game number
         const todaysGameNumber = await this.getTodaysGameNumber();
         if (todaysGameNumber && scoreData.gameNumber !== todaysGameNumber) {
-            await message.reply(`Možeš poslati rezultat samo za današnji krug (#${todaysGameNumber}).`);
+            await message.reply(
+                `Možeš poslati rezultat samo za današnji krug (#${todaysGameNumber}).`
+            );
             return null;
         }
 
         try {
-            const hasSubmitted = await Score.hasSubmittedToday(senderNumber, scoreData.gameNumber);
+            const hasSubmitted = await Score.hasSubmittedToday(
+                senderNumber,
+                scoreData.gameNumber
+            );
             if (hasSubmitted) {
-                await message.reply(`Već si poslao rezultat za danas, ohladi malo!`);
+                await message.reply('Već si poslao rezultat za danas, ohladi malo!');
                 return null;
             }
 
@@ -82,10 +100,12 @@ class ScoreService {
     }
 
     static isTimeGuessrMessage(text) {
-        return text.includes('TimeGuessr #') &&
+        return (
+            text.includes('TimeGuessr #') &&
             text.includes('🌎') &&
             text.includes('📅') &&
-            text.includes('timeguessr.com');
+            text.includes('timeguessr.com')
+        );
     }
 
     static parseTimeGuessrScore(text) {
@@ -99,7 +119,6 @@ class ScoreService {
             const maxScore = parseInt(headerMatch[3].replace(/,/g, ''), 10);
             const percentage = parseFloat(((score / maxScore) * 100).toFixed(1));
 
-            // Parse rounds data
             const rounds = [];
             for (let i = 1; i <= 5; i++) {
                 if (lines[i]) {
@@ -113,14 +132,7 @@ class ScoreService {
                 }
             }
 
-            return {
-                gameNumber,
-                score,
-                maxScore,
-                percentage,
-                rounds,
-                rawMessage: text
-            };
+            return { gameNumber, score, maxScore, percentage, rounds };
         } catch (error) {
             console.error('Error parsing score:', error);
             return null;

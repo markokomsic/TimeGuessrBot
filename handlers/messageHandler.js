@@ -7,6 +7,28 @@ const Player = require('../models/Player');
 let petCounter = 0;
 
 class MessageHandler {
+    /**
+     * Returns the pure phone number of the sender,
+     * whether it’s a 1:1 chat or a group message.
+     * Strips off the "@c.us" and ignores the group JID.
+     */
+    static getSenderNumber(message) {
+        const participant = message.participant;
+        const from = message.from;
+
+        let jid;
+        if (participant && participant.endsWith('@c.us')) {
+            jid = participant;
+        } else if (from && from.endsWith('@c.us')) {
+            jid = from;
+        } else {
+            return null;
+        }
+
+        const number = jid.split('@')[0];
+        return number.match(/^\d+$/) ? number : null;
+    }
+
     static async handle(message) {
         console.log(`📩 Message from ${message.from}: ${message.body.substring(0, 50)}...`);
 
@@ -52,32 +74,24 @@ class MessageHandler {
 
             // Handle !me command
             if (message.body === '!me') {
-                let senderNumber = '';
-                let senderName = 'Nepoznat igrač';
-                try {
-                    const contact = await message.getContact();
-                    senderName = contact.pushname || contact.name || 'Nepoznat igrač';
-
-                    if (message.from.endsWith('@g.us')) {
-                        // Always use message.participant in groups
-                        if (message.participant && message.participant.endsWith('@c.us')) {
-                            senderNumber = message.participant.replace('@c.us', '');
-                        }
-                    } else if (message.from.endsWith('@c.us')) {
-                        // Private chat
-                        senderNumber = message.from.replace('@c.us', '');
-                    }
-                } catch (error) {
-                    await message.reply('Greška pri dohvaćanju tvojih podataka.');
-                    return;
-                }
-
-                if (!senderNumber.match(/^\d+$/)) {
+                // Extract sender number and name
+                const senderNumber = this.getSenderNumber(message);
+                if (!senderNumber) {
                     await message.reply('Nije moguće prepoznati tvoj broj. Pošalji rezultat iz privatnog chata ako si novi igrač.');
                     return;
                 }
 
-                // Find player
+                let senderName = 'Nepoznat igrač';
+                try {
+                    const contact = await message.getContact();
+                    senderName = contact.pushname || contact.name || senderName;
+                } catch (error) {
+                    console.error('Error fetching contact:', error);
+                    await message.reply('Greška pri dohvaćanju tvojih podataka.');
+                    return;
+                }
+
+                // Find player and stats
                 const player = await Player.findOrCreate(senderNumber, senderName);
                 const stats = await Player.getStats(player.id);
 
@@ -104,7 +118,6 @@ class MessageHandler {
                     `🦴 Dobar bot! Još maženja? (${petCounter}x)`,
                     `😄 Bot je sretan! (${petCounter}x)`
                 ];
-                // Pick a random response
                 const response = responses[Math.floor(Math.random() * responses.length)];
                 await message.reply(response);
                 return;
@@ -144,19 +157,36 @@ class MessageHandler {
             // Handle help command
             if (message.body === '!help') {
                 console.log('Handling help command');
-                const helpMessage = `🎯 *TimeGuessr Bot Naredbe* 🎯\n\n` +
-                    `📊 *Ljestvice:*\n` +
-                    `• \`!d\` - Dnevna ljestvica\n` +
-                    `• \`!w\` - Tjedna ljestvica (uživo)\n` +
-                    `• \`!leaderboard\` - Tjedna snimka\n` +
-                    `• \`!alltime\` - All-Time ljestvica\n\n` +
-                    `• \`!me\` - Tvoje osobne statistike\n\n` +
-                    `🔧 *Ostalo:*\n` +
-                    `• \`!ping\` - Provjeri je li bot aktivan\n` +
-                    `• \`!pet\` - Pomazi bota 🐶\n` +
-                    `• \`!bodovi\` - Objašnjenje bodovanja\n` +
-                    `• \`!help\` - Prikaži ovu poruku\n\n` +
-                    `🎮 *Kako poslati rezultat:*\n` +
+                const helpMessage = `🎯 *TimeGuessr Bot Naredbe* 🎯
+
+` +
+                    `📊 *Ljestvice:*
+` +
+                    `• \`!d\` - Dnevna ljestvica
+` +
+                    `• \`!w\` - Tjedna ljestvica (uživo)
+` +
+                    `• \`!leaderboard\` - Tjedna snimka
+` +
+                    `• \`!alltime\` - All-Time ljestvica
+
+` +
+                    `• \`!me\` - Tvoje osobne statistike
+
+` +
+                    `🔧 *Ostalo:*
+` +
+                    `• \`!ping\` - Provjeri je li bot aktivan
+` +
+                    `• \`!pet\` - Pomazi bota 🐶
+` +
+                    `• \`!bodovi\` - Objašnjenje bodovanja
+` +
+                    `• \`!help\` - Prikaži ovu poruku
+
+` +
+                    `🎮 *Kako poslati rezultat:*
+` +
                     `Proslijedi poruku iz TimeGuessr igre koja sadrži tvoj rezultat!`;
 
                 await message.reply(helpMessage);
