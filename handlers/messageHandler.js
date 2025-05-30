@@ -1,6 +1,7 @@
 ﻿const ScoreService = require('../services/scoreService');
 const Leaderboard = require('../services/leaderboard');
 const DailyRanking = require('../services/dailyRanking');
+const Player = require('../models/Player');
 
 // Simple in-memory pet counter (resets on restart)
 let petCounter = 0;
