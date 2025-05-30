@@ -1,11 +1,16 @@
+# Explicitly disable auto-detection of Puppeteer/Playwright
+[providers]
+node = false
+
 [phases.setup]
 nixPkgs = ["nodejs", "npm"]
+aptPkgs = []
 
 [phases.install]
 cmds = [
     "apt-get update",
     "apt-get install -y --no-install-recommends wget gnupg ca-certificates",
-    "mkdir -p /etc/apt/keyrings",
+    "mkdir -p /etc/apt/keyrings", 
     "wget -qO- https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > /etc/apt/keyrings/google-chrome.gpg",
     "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main' > /etc/apt/sources.list.d/google-chrome.list",
     "apt-get update",
@@ -15,7 +20,3 @@ cmds = [
 
 [start]
 cmd = "npm start"
-
-# Prevent Nixpacks from auto-detecting and adding browser packages
-[variables]
-NIXPACKS_NO_DEFAULT_CACHE_MOUNT = "1"
