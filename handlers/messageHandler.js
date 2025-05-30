@@ -13,7 +13,7 @@ class MessageHandler {
      * Strips off the "@c.us" and ignores the group JID.
      */
     static getSenderNumber(message) {
-        const participant = message.participant;
+        const participant = message.author;
         const from = message.from;
 
         let jid;
