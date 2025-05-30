@@ -57,12 +57,17 @@ class MessageHandler {
                 try {
                     const contact = await message.getContact();
                     senderName = contact.pushname || contact.name || 'Nepoznat igrač';
-                    // Always extract phone number (strip @c.us)
+
                     if (message.from.endsWith('@g.us')) {
+                        // In group: try message.author first (for others), fallback to your own number if you sent the message
                         if (message.author && message.author.endsWith('@c.us')) {
                             senderNumber = message.author.replace('@c.us', '');
+                        } else if (contact && contact.number) {
+                            // Fallback: your own number in the group
+                            senderNumber = contact.number;
                         }
                     } else if (message.from.endsWith('@c.us')) {
+                        // Private chat
                         senderNumber = message.from.replace('@c.us', '');
                     }
                 } catch (error) {
