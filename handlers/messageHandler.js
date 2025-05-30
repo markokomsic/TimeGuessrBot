@@ -59,12 +59,15 @@ class MessageHandler {
                     senderName = contact.pushname || contact.name || 'Nepoznat igrač';
 
                     if (message.from.endsWith('@g.us')) {
-                        // In group: try message.author first (for others), fallback to your own number if you sent the message
+                        // If message.author exists, it's someone else in the group
                         if (message.author && message.author.endsWith('@c.us')) {
                             senderNumber = message.author.replace('@c.us', '');
-                        } else if (contact && contact.number) {
-                            // Fallback: your own number in the group
-                            senderNumber = contact.number;
+                        } else if (message.fromMe && message.from) {
+                            // If you sent the message in the group, use your own number from message.from
+                            // message.from will be the group id, but contact.number is your phone number in this case
+                            if (contact && contact.number && /^\d+$/.test(contact.number)) {
+                                senderNumber = contact.number;
+                            }
                         }
                     } else if (message.from.endsWith('@c.us')) {
                         // Private chat
