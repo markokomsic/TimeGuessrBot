@@ -13,13 +13,13 @@ class MessageHandler {
      * Strips off the "@c.us" and ignores the group JID.
      */
     static getSenderNumber(message) {
-        // In group: message.author is always the sender's JID
-        // In private: message.from is always the sender's JID
         if (message.from.endsWith('@g.us')) {
+            // Group message - use message.author
             if (message.author && message.author.endsWith('@c.us')) {
                 return message.author.replace('@c.us', '');
             }
         } else if (message.from.endsWith('@c.us')) {
+            // Private message - use message.from
             return message.from.replace('@c.us', '');
         }
         return null;
@@ -31,14 +31,12 @@ class MessageHandler {
         try {
             // Handle ping command
             if (message.body === '!ping') {
-                console.log('Handling ping command');
                 await message.reply('TimeGuessr Bot radi! 🎯');
                 return;
             }
 
             // Handle daily leaderboard command (!d)
             if (message.body === '!d') {
-                console.log('Handling daily leaderboard command');
                 const leaderboard = await Leaderboard.generate('daily');
                 await message.reply(leaderboard);
                 return;
@@ -46,7 +44,6 @@ class MessageHandler {
 
             // Handle weekly real-time leaderboard command (!w)
             if (message.body === '!w') {
-                console.log('Handling weekly real-time leaderboard command');
                 const leaderboard = await Leaderboard.generate('weekly');
                 await message.reply(leaderboard);
                 return;
@@ -54,7 +51,6 @@ class MessageHandler {
 
             // Handle leaderboard command (weekly snapshot)
             if (message.body === '!leaderboard') {
-                console.log('Handling leaderboard snapshot command');
                 const leaderboard = await Leaderboard.generate('weekly-snapshot');
                 await message.reply(leaderboard);
                 return;
@@ -62,7 +58,6 @@ class MessageHandler {
 
             // Handle all-time leaderboard command
             if (message.body === '!alltime') {
-                console.log('Handling all-time leaderboard command');
                 const leaderboard = await Leaderboard.generate('alltime');
                 await message.reply(leaderboard);
                 return;
@@ -70,7 +65,6 @@ class MessageHandler {
 
             // Handle !me command
             if (message.body === '!me') {
-                // Extract sender number and name
                 const senderNumber = this.getSenderNumber(message);
                 if (!senderNumber) {
                     await message.reply('Nije moguće prepoznati tvoj broj. Pošalji rezultat iz privatnog chata ako si novi igrač.');
@@ -82,12 +76,10 @@ class MessageHandler {
                     const contact = await message.getContact();
                     senderName = contact.pushname || contact.name || senderName;
                 } catch (error) {
-                    console.error('Error fetching contact:', error);
                     await message.reply('Greška pri dohvaćanju tvojih podataka.');
                     return;
                 }
 
-                // Find player and stats
                 const player = await Player.findOrCreate(senderNumber, senderName);
                 const stats = await Player.getStats(player.id);
 
@@ -152,7 +144,6 @@ class MessageHandler {
 
             // Handle help command
             if (message.body === '!help') {
-                console.log('Handling help command');
                 const helpMessage = `🎯 *TimeGuessr Bot Naredbe* 🎯
 
 📊 *Ljestvice:*
@@ -177,18 +168,14 @@ Proslijedi poruku iz TimeGuessr igre koja sadrži tvoj rezultat!`;
             }
 
             // Process scores
-            console.log('Checking for score pattern...');
             const result = await ScoreService.processScore(message);
 
             if (result) {
-                console.log('Score processed successfully:', result);
-                const { score: savedScore, playerName } = result;
+                const { score: savedScore } = result;
 
                 // Update daily rankings
                 try {
-                    console.log(`Updating daily rankings for game #${savedScore.game_number}`);
                     await DailyRanking.calculateForGame(savedScore.game_number);
-                    console.log('Daily rankings updated successfully');
 
                     try {
                         // Get updated rankings
@@ -213,8 +200,6 @@ Proslijedi poruku iz TimeGuessr igre koja sadrži tvoj rezultat!`;
                 } catch (rankingError) {
                     console.error('❌ Error updating daily rankings:', rankingError);
                 }
-            } else {
-                console.log('No score pattern matched or score already submitted');
             }
         } catch (error) {
             console.error('❌ Error handling message:', error);

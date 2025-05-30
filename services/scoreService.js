@@ -10,10 +10,12 @@ class ScoreService {
      */
     static getSenderNumber(message) {
         if (message.from.endsWith('@g.us')) {
+            // Group message - use message.author
             if (message.author && message.author.endsWith('@c.us')) {
                 return message.author.replace('@c.us', '');
             }
         } else if (message.from.endsWith('@c.us')) {
+            // Private message - use message.from
             return message.from.replace('@c.us', '');
         }
         return null;
@@ -50,7 +52,7 @@ class ScoreService {
             const contact = await message.getContact();
             senderName = contact.pushname || contact.name || senderName;
         } catch (err) {
-            console.error('Error fetching contact:', err);
+            // Not fatal, just use default name
         }
 
         // Validate game number
