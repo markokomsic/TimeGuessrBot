@@ -13,20 +13,16 @@ class MessageHandler {
      * Strips off the "@c.us" and ignores the group JID.
      */
     static getSenderNumber(message) {
-        const participant = message.author;
-        const from = message.from;
-
-        let jid;
-        if (participant && participant.endsWith('@c.us')) {
-            jid = participant;
-        } else if (from && from.endsWith('@c.us')) {
-            jid = from;
-        } else {
-            return null;
+        // In group: message.author is always the sender's JID
+        // In private: message.from is always the sender's JID
+        if (message.from.endsWith('@g.us')) {
+            if (message.author && message.author.endsWith('@c.us')) {
+                return message.author.replace('@c.us', '');
+            }
+        } else if (message.from.endsWith('@c.us')) {
+            return message.from.replace('@c.us', '');
         }
-
-        const number = jid.split('@')[0];
-        return number.match(/^\d+$/) ? number : null;
+        return null;
     }
 
     static async handle(message) {
@@ -159,35 +155,22 @@ class MessageHandler {
                 console.log('Handling help command');
                 const helpMessage = `🎯 *TimeGuessr Bot Naredbe* 🎯
 
-` +
-                    `📊 *Ljestvice:*
-` +
-                    `• \`!d\` - Dnevna ljestvica
-` +
-                    `• \`!w\` - Tjedna ljestvica (uživo)
-` +
-                    `• \`!leaderboard\` - Tjedna snimka
-` +
-                    `• \`!alltime\` - All-Time ljestvica
+📊 *Ljestvice:*
+• \`!d\` - Dnevna ljestvica
+• \`!w\` - Tjedna ljestvica (uživo)
+• \`!leaderboard\` - Tjedna snimka
+• \`!alltime\` - All-Time ljestvica
 
-` +
-                    `• \`!me\` - Tvoje osobne statistike
+• \`!me\` - Tvoje osobne statistike
 
-` +
-                    `🔧 *Ostalo:*
-` +
-                    `• \`!ping\` - Provjeri je li bot aktivan
-` +
-                    `• \`!pet\` - Pomazi bota 🐶
-` +
-                    `• \`!bodovi\` - Objašnjenje bodovanja
-` +
-                    `• \`!help\` - Prikaži ovu poruku
+🔧 *Ostalo:*
+• \`!ping\` - Provjeri je li bot aktivan
+• \`!pet\` - Pomazi bota 🐶
+• \`!bodovi\` - Objašnjenje bodovanja
+• \`!help\` - Prikaži ovu poruku
 
-` +
-                    `🎮 *Kako poslati rezultat:*
-` +
-                    `Proslijedi poruku iz TimeGuessr igre koja sadrži tvoj rezultat!`;
+🎮 *Kako poslati rezultat:*
+Proslijedi poruku iz TimeGuessr igre koja sadrži tvoj rezultat!`;
 
                 await message.reply(helpMessage);
                 return;

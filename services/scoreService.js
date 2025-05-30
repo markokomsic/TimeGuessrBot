@@ -9,20 +9,14 @@ class ScoreService {
      * Strips off the "@c.us" and ignores the group JID.
      */
     static getSenderNumber(message) {
-        const participant = message.author;
-        const from = message.from;
-
-        let jid;
-        if (participant && participant.endsWith('@c.us')) {
-            jid = participant;
-        } else if (from && from.endsWith('@c.us')) {
-            jid = from;
-        } else {
-            return null;
+        if (message.from.endsWith('@g.us')) {
+            if (message.author && message.author.endsWith('@c.us')) {
+                return message.author.replace('@c.us', '');
+            }
+        } else if (message.from.endsWith('@c.us')) {
+            return message.from.replace('@c.us', '');
         }
-
-        const number = jid.split('@')[0];
-        return number.match(/^\d+$/) ? number : null;
+        return null;
     }
 
     static async getTodaysGameNumber() {
