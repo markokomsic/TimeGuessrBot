@@ -49,6 +49,39 @@ class MessageHandler {
                 return;
             }
 
+            if (message.body === '!me') {
+                // Get sender info
+                let senderNumber = '';
+                let senderName = 'Nepoznat igrač';
+                try {
+                    const contact = await message.getContact();
+                    senderName = contact.pushname || contact.name || 'Nepoznat igrač';
+                    senderNumber = message.from.endsWith('@g.us')
+                        ? message.author.replace('@c.us', '')
+                        : message.from.replace('@c.us', '');
+                } catch (error) {
+                    await message.reply('Greška pri dohvaćanju tvojih podataka.');
+                    return;
+                }
+
+                // Find player
+                const player = await Player.findOrCreate(senderNumber, senderName);
+                const stats = await Player.getStats(player.id);
+
+                const statsMsg =
+                    `👤 *Tvoje statistike:*
+
+• Ukupno odigranih igara: ${stats.games_played}
+• Najbolji rezultat: ${Number(stats.best_score).toLocaleString('hr-HR')}
+• Prosječan rezultat: ${Number(stats.avg_score).toLocaleString('hr-HR')}
+• Broj dnevnih pobjeda: ${stats.daily_wins}
+• Broj tjednih pobjeda: ${stats.weekly_wins}
+• All-Time bodovi: ${Number(stats.alltime_points).toLocaleString('hr-HR')}`;
+
+                await message.reply(statsMsg);
+                return;
+            }
+
             // Handle pet command
             if (message.body === '!pet') {
                 petCounter++;
@@ -104,6 +137,7 @@ class MessageHandler {
                     `• \`!w\` - Tjedna ljestvica (uživo)\n` +
                     `• \`!leaderboard\` - Tjedna snimka\n` +
                     `• \`!alltime\` - All-Time ljestvica\n\n` +
+                    `• \`!me\` - Tvoje osobne statistike\n\n` +
                     `🔧 *Ostalo:*\n` +
                     `• \`!ping\` - Provjeri je li bot aktivan\n` +
                     `• \`!pet\` - Pomazi bota 🐶\n` +

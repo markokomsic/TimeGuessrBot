@@ -1,7 +1,18 @@
 ﻿const Player = require('../models/Player');
 const Score = require('../models/Score');
+const db = require('../config/db');
 
 class ScoreService {
+    static async getTodaysGameNumber() {
+        // Get the highest game_number submitted today
+        const { rows } = await db.query(`
+            SELECT MAX(game_number) AS game_number
+            FROM scores
+            WHERE DATE(created_at) = CURRENT_DATE
+        `);
+        return rows[0]?.game_number ? parseInt(rows[0].game_number, 10) : null;
+    }
+
     static async processScore(message) {
         const text = message.body;
         if (!this.isTimeGuessrMessage(text)) return null;
@@ -27,6 +38,13 @@ class ScoreService {
             }
         } catch (error) {
             console.error('Error getting contact:', error);
+            return null;
+        }
+
+        // Check if the submitted round is today's round
+        const todaysGameNumber = await this.getTodaysGameNumber();
+        if (todaysGameNumber && scoreData.gameNumber !== todaysGameNumber) {
+            await message.reply(`Možeš poslati rezultat samo za današnji krug (#${todaysGameNumber}).`);
             return null;
         }
 
