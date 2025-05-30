@@ -40,7 +40,7 @@ class MessageHandler {
             }
 
             // Handle help command
-            if (message.body === '!help' || message.body === '!pomoć') {
+            if (message.body === '!help' || message.body === '!pomoc') {
                 console.log('Handling help command');
                 const helpMessage = `🎯 *TimeGuessr Bot Naredbe* 🎯\n\n` +
                     `📊 *Ljestvice:*\n` +
@@ -49,7 +49,7 @@ class MessageHandler {
                     `• \`!leaderboard\` - Tjedna snimka\n\n` +
                     `🔧 *Ostalo:*\n` +
                     `• \`!ping\` - Provjeri je li bot aktivan\n` +
-                    `• \`!pomoć\` - Prikaži ovu poruku\n\n` +
+                    `• \`!help\` - Prikaži ovu poruku\n\n` +
                     `🎮 *Kako poslati rezultat:*\n` +
                     `Proslijedi poruku iz TimeGuessr igre koja sadrži tvoj rezultat!`;
 
@@ -64,12 +64,6 @@ class MessageHandler {
             if (result) {
                 console.log('Score processed successfully:', result);
                 const { score: savedScore, playerName } = result;
-
-                // Send confirmation to user (in Croatian)
-                await message.reply(
-                    `✅ Rezultat spremljen za ${playerName}!\n` +
-                    `🎯 Igra #${savedScore.game_number}: ${savedScore.score.toLocaleString()} bodova (${savedScore.percentage}%)`
-                );
 
                 // Update daily rankings
                 try {

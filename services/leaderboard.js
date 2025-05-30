@@ -8,7 +8,7 @@ class Leaderboard {
                     return await this.generateDaily();
                 case 'weekly':
                     return await this.generateWeekly();
-                case 'weekly-snapshot': // For end-of-week saved results
+                case 'weekly-snapshot': 
                     return await this.generateWeeklySnapshot();
                 default:
                     return 'Neispravan tip ljestvice';
@@ -83,26 +83,8 @@ class Leaderboard {
             return `🏆 Tjedna ljestvica (${weekRange})\n\nNema podataka za ovaj tjedan.`;
         }
 
-        // Identify bonus contenders
-        const mostWins = Math.max(...rows.map(p => p.daily_wins));
-        const highestScore = Math.max(...rows.map(p => p.highest_score));
-
-        const playersWithContenders = rows.map(player => {
-            const bonuses = [];
-
-            if (player.daily_wins === mostWins) {
-                bonuses.push('👑 Najviše pobjeda');
-            }
-
-            if (player.highest_score === highestScore) {
-                bonuses.push('🚀 Najveći rezultat');
-            }
-
-            return {
-                ...player,
-                bonuses
-            };
-        });
+        // Apply tiebreakers and determine bonuses
+        const playersWithContenders = this.determineBonusWinners(rows);
 
         // Format results
         return this.formatWeeklyResults(playersWithContenders, weekRange);
@@ -138,8 +120,11 @@ class Leaderboard {
             return `🏆 Tjedna snimka (${weekRange})\n\n⏰ Tjedna snimka još nije spremljena.`;
         }
 
+        // Apply tiebreakers to determine which players actually won bonuses
+        const playersWithActualBonuses = this.determineBonusWinnersForSnapshot(rows);
+
         // Format results
-        return this.formatWeeklySnapshotResults(rows, weekRange);
+        return this.formatWeeklySnapshotResults(playersWithActualBonuses, weekRange);
     }
 
     static formatDailyResults(rows, gameNumber, averages) {
@@ -176,7 +161,7 @@ class Leaderboard {
 
             message += `${rankEmoji} *${player.name}*\n`;
             message += `   🎯 Tjedni bodovi: ${player.base_points}\n`;
-            message += `   📊 Tjedna suma: ${player.total_daily_scores.toLocaleString()} bodova\n`;
+            message += `   📊 Tjedna suma: ${Math.round(player.total_daily_scores).toLocaleString()} bodova\n`;
             message += `   ⭐ Prosjek: ${Math.round(player.average_score).toLocaleString()} bodova\n`;
 
             if (player.bonuses.length > 0) {
@@ -205,15 +190,10 @@ class Leaderboard {
             message += `${rankEmoji} *${player.name}*\n`;
             message += `   🎯 Ukupno bodova: ${player.final_total}\n`;
             message += `   ⚡ Osnovno: ${player.base_points} | ✨ Bonus: ${player.bonus_points}\n`;
-            message += `   📊 Tjedna suma: ${player.total_daily_scores.toLocaleString()} bodova\n`;
+            message += `   📊 Tjedna suma: ${Math.round(player.total_daily_scores).toLocaleString()} bodova\n`;
 
-            // Show bonus details
-            const bonuses = [];
-            if (player.bonus_points >= 50) bonuses.push(`👑 Najviše pobjeda (${player.daily_wins}x)`);
-            if (player.bonus_points >= 30) bonuses.push(`🚀 Najveći rezultat (${player.highest_score.toLocaleString()} bodova)`);
-
-            if (bonuses.length > 0) {
-                message += `   🏅 ${bonuses.join(' • ')}\n`;
+            if (player.bonuses && player.bonuses.length > 0) {
+                message += `   🏅 ${player.bonuses.join(' • ')}\n`;
             }
 
             message += '\n';
@@ -223,6 +203,76 @@ class Leaderboard {
     }
 
     // Helper functions
+    static determineBonusWinners(players) {
+        // Find candidates for each bonus
+        const mostWins = Math.max(...players.map(p => parseInt(p.daily_wins) || 0));
+        const highestScore = Math.max(...players.map(p => parseInt(p.highest_score) || 0));
+
+        // Get all players tied for most wins
+        const winsContenders = players.filter(p => (parseInt(p.daily_wins) || 0) === mostWins && mostWins > 0);
+
+        // Get all players tied for highest score
+        const scoreContenders = players.filter(p => (parseInt(p.highest_score) || 0) === highestScore && highestScore > 0);
+
+        // Apply tiebreaker: highest Tjedna suma (total_daily_scores)
+        const winsWinner = this.applyTiebreaker(winsContenders, 'total_daily_scores');
+        const scoreWinner = this.applyTiebreaker(scoreContenders, 'total_daily_scores');
+
+        // Assign bonuses to players
+        return players.map(player => {
+            const bonuses = [];
+
+            if (winsWinner && player.name === winsWinner.name) {
+                bonuses.push('👑 Najviše pobjeda');
+            }
+
+            if (scoreWinner && player.name === scoreWinner.name) {
+                bonuses.push('🚀 Najveći rezultat');
+            }
+
+            return {
+                ...player,
+                bonuses
+            };
+        });
+    }
+
+    static determineBonusWinnersForSnapshot(players) {
+        // For snapshots, we need to reverse-engineer who actually won the bonuses
+        // based on their bonus_points values
+        return players.map(player => {
+            const bonuses = [];
+            const bonusPoints = parseInt(player.bonus_points) || 0;
+
+            // Check if player has bonus points indicating they won bonuses
+            if (bonusPoints >= 50) { 
+                bonuses.push(`👑 Najviše pobjeda (${player.daily_wins}x)`);
+            }
+            if (bonusPoints >= 30) { 
+                bonuses.push(`🚀 Najveći rezultat (${parseInt(player.highest_score).toLocaleString()} bodova)`);
+            }
+
+            return {
+                ...player,
+                bonuses
+            };
+        });
+    }
+
+    static applyTiebreaker(contenders, tiebreakerField) {
+        if (contenders.length === 0) return null;
+        if (contenders.length === 1) return contenders[0];
+
+        // Find the highest value for the tiebreaker field
+        const maxTiebreakerValue = Math.max(...contenders.map(p => parseInt(p[tiebreakerField]) || 0));
+
+        // Get all players tied for the highest tiebreaker value
+        const tiebreakerWinners = contenders.filter(p => (parseInt(p[tiebreakerField]) || 0) === maxTiebreakerValue);
+
+        // If still tied after tiebreaker, return the first one 
+        return tiebreakerWinners[0];
+    }
+
     static getCurrentWeekStart() {
         const now = new Date();
         const day = now.getDay();
