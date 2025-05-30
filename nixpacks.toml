@@ -1,13 +1,8 @@
-# Explicitly disable auto-detection of Puppeteer/Playwright
-[providers]
-node = false
-
-[phases.setup]
-nixPkgs = ["nodejs", "npm"]
-aptPkgs = []
-
+# Use only apt packages, avoid Nix to prevent conflicts
 [phases.install]
 cmds = [
+    "curl -fsSL https://deb.nodesource.com/setup_20.x | bash -",
+    "apt-get install -y nodejs",
     "apt-get update",
     "apt-get install -y --no-install-recommends wget gnupg ca-certificates",
     "mkdir -p /etc/apt/keyrings", 
