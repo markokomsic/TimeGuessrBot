@@ -28,16 +28,21 @@ class ScoreService {
             const contact = await message.getContact();
             senderName = contact.pushname || contact.name || 'Unknown Player';
 
-            // Determine sender number based on message context
+            // Always extract phone number (strip @c.us)
             if (message.from.endsWith('@g.us')) {
-                // Group message - use message.author
-                senderNumber = message.author.replace('@c.us', '');
-            } else {
-                // Private message - use message.from
+                if (message.author && message.author.endsWith('@c.us')) {
+                    senderNumber = message.author.replace('@c.us', '');
+                }
+            } else if (message.from.endsWith('@c.us')) {
                 senderNumber = message.from.replace('@c.us', '');
             }
         } catch (error) {
             console.error('Error getting contact:', error);
+            return null;
+        }
+
+        if (!senderNumber.match(/^\d+$/)) {
+            await message.reply('Nije moguće prepoznati tvoj broj. Pošalji rezultat iz privatnog chata ako si novi igrač.');
             return null;
         }
 

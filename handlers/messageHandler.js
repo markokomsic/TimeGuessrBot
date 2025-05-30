@@ -1,200 +1,131 @@
-﻿const ScoreService = require('../services/scoreService');
-const Leaderboard = require('../services/leaderboard');
-const DailyRanking = require('../services/dailyRanking');
-const Player = require('../models/Player');
+﻿const Player = require('../models/Player');
+const Score = require('../models/Score');
+const db = require('../config/db');
 
-// Simple in-memory pet counter (resets on restart)
-let petCounter = 0;
+class ScoreService {
+    static async getTodaysGameNumber() {
+        // Get the highest game_number submitted today
+        const { rows } = await db.query(`
+            SELECT MAX(game_number) AS game_number
+            FROM scores
+            WHERE DATE(created_at) = CURRENT_DATE
+        `);
+        return rows[0]?.game_number ? parseInt(rows[0].game_number, 10) : null;
+    }
 
-class MessageHandler {
-    static async handle(message) {
-        console.log(`📩 Message from ${message.from}: ${message.body.substring(0, 50)}...`);
+    static async processScore(message) {
+        const text = message.body;
+        if (!this.isTimeGuessrMessage(text)) return null;
+
+        const scoreData = this.parseTimeGuessrScore(text);
+        if (!scoreData) return null;
+
+        // Get sender info
+        let senderNumber = '';
+        let senderName = 'Unknown Player';
 
         try {
-            // Handle ping command
-            if (message.body === '!ping') {
-                console.log('Handling ping command');
-                await message.reply('TimeGuessr Bot radi! 🎯');
-                return;
-            }
+            const contact = await message.getContact();
+            senderName = contact.pushname || contact.name || 'Unknown Player';
 
-            // Handle daily leaderboard command (!d)
-            if (message.body === '!d') {
-                console.log('Handling daily leaderboard command');
-                const leaderboard = await Leaderboard.generate('daily');
-                await message.reply(leaderboard);
-                return;
-            }
-
-            // Handle weekly real-time leaderboard command (!w)
-            if (message.body === '!w') {
-                console.log('Handling weekly real-time leaderboard command');
-                const leaderboard = await Leaderboard.generate('weekly');
-                await message.reply(leaderboard);
-                return;
-            }
-
-            // Handle leaderboard command (weekly snapshot)
-            if (message.body === '!leaderboard') {
-                console.log('Handling leaderboard snapshot command');
-                const leaderboard = await Leaderboard.generate('weekly-snapshot');
-                await message.reply(leaderboard);
-                return;
-            }
-
-            // Handle all-time leaderboard command
-            if (message.body === '!alltime') {
-                console.log('Handling all-time leaderboard command');
-                const leaderboard = await Leaderboard.generate('alltime');
-                await message.reply(leaderboard);
-                return;
-            }
-
-            if (message.body === '!me') {
-                // Get sender info
-                let senderNumber = '';
-                let senderName = 'Nepoznat igrač';
-                try {
-                    const contact = await message.getContact();
-                    senderName = contact.pushname || contact.name || 'Nepoznat igrač';
-                    senderNumber = message.from.endsWith('@g.us')
-                        ? message.author.replace('@c.us', '')
-                        : message.from.replace('@c.us', '');
-                } catch (error) {
-                    await message.reply('Greška pri dohvaćanju tvojih podataka.');
-                    return;
+            // Always extract phone number (strip @c.us)
+            if (message.from.endsWith('@g.us')) {
+                if (message.author && message.author.endsWith('@c.us')) {
+                    senderNumber = message.author.replace('@c.us', '');
                 }
-
-                // Find player
-                const player = await Player.findOrCreate(senderNumber, senderName);
-                const stats = await Player.getStats(player.id);
-
-                const statsMsg =
-                    `👤 *Tvoje statistike:*
-
-• Ukupno odigranih igara: ${stats.games_played}
-• Najbolji rezultat: ${Number(stats.best_score).toLocaleString('hr-HR')}
-• Prosječan rezultat: ${Number(stats.avg_score).toLocaleString('hr-HR')}
-• Broj dnevnih pobjeda: ${stats.daily_wins}
-• Broj tjednih pobjeda: ${stats.weekly_wins}
-• All-Time bodovi: ${Number(stats.alltime_points).toLocaleString('hr-HR')}`;
-
-                await message.reply(statsMsg);
-                return;
-            }
-
-            // Handle pet command
-            if (message.body === '!pet') {
-                petCounter++;
-                const responses = [
-                    `🐶 Vau vau! Hvala na maženju! (${petCounter}x)`,
-                    `🐾 Bot maše repom od sreće! (${petCounter}x)`,
-                    `🦴 Dobar bot! Još maženja? (${petCounter}x)`,
-                    `😄 Bot je sretan! (${petCounter}x)`
-                ];
-                // Pick a random response
-                const response = responses[Math.floor(Math.random() * responses.length)];
-                await message.reply(response);
-                return;
-            }
-
-            // Handle points explanation command
-            if (message.body === '!bodovi') {
-                const pointsMessage =
-                    `📋 *Objašnjenje bodovanja TimeGuessr*
-
-*Dnevni bodovi* (služe za tjedni poredak):
-  🥇 10, 🥈 8, 🥉 7, 4., 6, 5., 5, 6., 4, 7., 3, 8., 2, 9., 1
-
-*Weekly bodovi* (dodjeljuju se prema tjednom poretku, ne zbrajaju se dnevni bodovi!):
-  1. mjesto: 250
-  2. mjesto: 180
-  3. mjesto: 150
-  4. mjesto: 120
-  5. mjesto: 100
-  6. mjesto: 80
-  7. mjesto: 60
-  8. mjesto: 40
-  9. mjesto: 20
-  10. mjesto: 10
-
-*Weekly bonusi:*
-  +50 bodova za najviše dnevnih pobjeda u tjednu
-  +30 bodova za najveći dnevni rezultat u tjednu
-
-*All-Time ljestvica:*
-  Zbroj svih osvojenih weekly bodova (uključujući bonuse) kroz sve tjedne.
-  Što više tjednih pobjeda i bonusa, to bolji plasman na all-time ljestvici!`;
-                await message.reply(pointsMessage);
-                return;
-            }
-
-            // Handle help command
-            if (message.body === '!help') {
-                console.log('Handling help command');
-                const helpMessage = `🎯 *TimeGuessr Bot Naredbe* 🎯\n\n` +
-                    `📊 *Ljestvice:*\n` +
-                    `• \`!d\` - Dnevna ljestvica\n` +
-                    `• \`!w\` - Tjedna ljestvica (uživo)\n` +
-                    `• \`!leaderboard\` - Tjedna snimka\n` +
-                    `• \`!alltime\` - All-Time ljestvica\n\n` +
-                    `• \`!me\` - Tvoje osobne statistike\n\n` +
-                    `🔧 *Ostalo:*\n` +
-                    `• \`!ping\` - Provjeri je li bot aktivan\n` +
-                    `• \`!pet\` - Pomazi bota 🐶\n` +
-                    `• \`!bodovi\` - Objašnjenje bodovanja\n` +
-                    `• \`!help\` - Prikaži ovu poruku\n\n` +
-                    `🎮 *Kako poslati rezultat:*\n` +
-                    `Proslijedi poruku iz TimeGuessr igre koja sadrži tvoj rezultat!`;
-
-                await message.reply(helpMessage);
-                return;
-            }
-
-            // Process scores
-            console.log('Checking for score pattern...');
-            const result = await ScoreService.processScore(message);
-
-            if (result) {
-                console.log('Score processed successfully:', result);
-                const { score: savedScore, playerName } = result;
-
-                // Update daily rankings
-                try {
-                    console.log(`Updating daily rankings for game #${savedScore.game_number}`);
-                    await DailyRanking.calculateForGame(savedScore.game_number);
-                    console.log('Daily rankings updated successfully');
-
-                    try {
-                        // Get updated rankings
-                        const rankings = await DailyRanking.getRankingsForGame(savedScore.game_number);
-                        const playerRank = rankings.find(r => r.player_id === savedScore.player_id);
-
-                        if (playerRank && playerRank.rank <= 3) {
-                            const emoji = playerRank.rank === 1 ? '🥇' :
-                                playerRank.rank === 2 ? '🥈' : '🥉';
-
-                            const rankText = playerRank.rank === 1 ? 'prvi' :
-                                playerRank.rank === 2 ? 'drugi' : 'treći';
-
-                            await message.reply(
-                                `${emoji} Čestitamo! ${rankText} ste danas!\n` +
-                                `⭐ Zaradili ste ${playerRank.points_awarded} ligaških bodova!`
-                            );
-                        }
-                    } catch (rankFetchError) {
-                        console.error('❌ Error fetching daily rankings:', rankFetchError);
-                    }
-                } catch (rankingError) {
-                    console.error('❌ Error updating daily rankings:', rankingError);
-                }
-            } else {
-                console.log('No score pattern matched or score already submitted');
+            } else if (message.from.endsWith('@c.us')) {
+                senderNumber = message.from.replace('@c.us', '');
             }
         } catch (error) {
-            console.error('❌ Error handling message:', error);
+            console.error('Error getting contact:', error);
+            return null;
+        }
+
+        if (!senderNumber.match(/^\d+$/)) {
+            await message.reply('Nije moguće prepoznati tvoj broj. Pošalji rezultat iz privatnog chata ako si novi igrač.');
+            return null;
+        }
+
+        // Check if the submitted round is today's round
+        const todaysGameNumber = await this.getTodaysGameNumber();
+        if (todaysGameNumber && scoreData.gameNumber !== todaysGameNumber) {
+            await message.reply(`Možeš poslati rezultat samo za današnji krug (#${todaysGameNumber}).`);
+            return null;
+        }
+
+        try {
+            const hasSubmitted = await Score.hasSubmittedToday(senderNumber, scoreData.gameNumber);
+            if (hasSubmitted) {
+                await message.reply(`Već si poslao rezultat za danas, ohladi malo!`);
+                return null;
+            }
+
+            const player = await Player.findOrCreate(senderNumber, senderName);
+            const savedScore = await Score.create({
+                playerId: player.id,
+                gameNumber: scoreData.gameNumber,
+                score: scoreData.score,
+                maxScore: scoreData.maxScore,
+                percentage: scoreData.percentage,
+                roundsData: scoreData.rounds,
+                rawMessage: text
+            });
+
+            return {
+                score: savedScore,
+                playerName: senderName
+            };
+        } catch (error) {
+            console.error('Error saving score:', error);
+            return null;
+        }
+    }
+
+    static isTimeGuessrMessage(text) {
+        return text.includes('TimeGuessr #') &&
+            text.includes('🌎') &&
+            text.includes('📅') &&
+            text.includes('timeguessr.com');
+    }
+
+    static parseTimeGuessrScore(text) {
+        try {
+            const lines = text.trim().split('\n');
+            const headerMatch = lines[0].match(/TimeGuessr #(\d+)\s+([\d,]+)\/([\d,]+)/);
+            if (!headerMatch) return null;
+
+            const gameNumber = parseInt(headerMatch[1], 10);
+            const score = parseInt(headerMatch[2].replace(/,/g, ''), 10);
+            const maxScore = parseInt(headerMatch[3].replace(/,/g, ''), 10);
+            const percentage = parseFloat(((score / maxScore) * 100).toFixed(1));
+
+            // Parse rounds data
+            const rounds = [];
+            for (let i = 1; i <= 5; i++) {
+                if (lines[i]) {
+                    const geoMatch = lines[i].match(/🌎([🟩🟨⬛]+)/);
+                    const dateMatch = lines[i].match(/📅([🟩🟨⬛]+)/);
+                    rounds.push({
+                        round: i,
+                        geography: geoMatch ? geoMatch[1] : '',
+                        date: dateMatch ? dateMatch[1] : ''
+                    });
+                }
+            }
+
+            return {
+                gameNumber,
+                score,
+                maxScore,
+                percentage,
+                rounds,
+                rawMessage: text
+            };
+        } catch (error) {
+            console.error('Error parsing score:', error);
+            return null;
         }
     }
 }
 
-module.exports = MessageHandler;
+module.exports = ScoreService;
