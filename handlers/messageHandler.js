@@ -2,6 +2,9 @@
 const Leaderboard = require('../services/leaderboard');
 const DailyRanking = require('../services/dailyRanking');
 
+// Simple in-memory pet counter (resets on restart)
+let petCounter = 0;
+
 class MessageHandler {
     static async handle(message) {
         console.log(`📩 Message from ${message.from}: ${message.body.substring(0, 50)}...`);
@@ -30,25 +33,81 @@ class MessageHandler {
                 return;
             }
 
-            // Handle leaderboard command (for snapshots - can be used for all-time later)
-            if (message.body.startsWith('!leaderboard')) {
+            // Handle leaderboard command (weekly snapshot)
+            if (message.body === '!leaderboard') {
                 console.log('Handling leaderboard snapshot command');
-                // For now, show weekly snapshot. Later you can add all-time here
                 const leaderboard = await Leaderboard.generate('weekly-snapshot');
                 await message.reply(leaderboard);
                 return;
             }
 
+            // Handle all-time leaderboard command
+            if (message.body === '!alltime') {
+                console.log('Handling all-time leaderboard command');
+                const leaderboard = await Leaderboard.generate('alltime');
+                await message.reply(leaderboard);
+                return;
+            }
+
+            // Handle pet command
+            if (message.body === '!pet') {
+                petCounter++;
+                const responses = [
+                    `🐶 Vau vau! Hvala na maženju! (${petCounter}x)`,
+                    `🐾 Bot maše repom od sreće! (${petCounter}x)`,
+                    `🦴 Dobar bot! Još maženja? (${petCounter}x)`,
+                    `😄 Bot je sretan! (${petCounter}x)`
+                ];
+                // Pick a random response
+                const response = responses[Math.floor(Math.random() * responses.length)];
+                await message.reply(response);
+                return;
+            }
+
+            // Handle points explanation command
+            if (message.body === '!bodovi') {
+                const pointsMessage =
+                    `📋 *Objašnjenje bodovanja TimeGuessr*
+
+*Dnevni bodovi* (služe za tjedni poredak):
+  🥇 10, 🥈 8, 🥉 7, 4., 6, 5., 5, 6., 4, 7., 3, 8., 2, 9., 1
+
+*Weekly bodovi* (dodjeljuju se prema tjednom poretku, ne zbrajaju se dnevni bodovi!):
+  1. mjesto: 250
+  2. mjesto: 180
+  3. mjesto: 150
+  4. mjesto: 120
+  5. mjesto: 100
+  6. mjesto: 80
+  7. mjesto: 60
+  8. mjesto: 40
+  9. mjesto: 20
+  10. mjesto: 10
+
+*Weekly bonusi:*
+  +50 bodova za najviše dnevnih pobjeda u tjednu
+  +30 bodova za najveći dnevni rezultat u tjednu
+
+*All-Time ljestvica:*
+  Zbroj svih osvojenih weekly bodova (uključujući bonuse) kroz sve tjedne.
+  Što više tjednih pobjeda i bonusa, to bolji plasman na all-time ljestvici!`;
+                await message.reply(pointsMessage);
+                return;
+            }
+
             // Handle help command
-            if (message.body === '!help' || message.body === '!pomoc') {
+            if (message.body === '!help') {
                 console.log('Handling help command');
                 const helpMessage = `🎯 *TimeGuessr Bot Naredbe* 🎯\n\n` +
                     `📊 *Ljestvice:*\n` +
                     `• \`!d\` - Dnevna ljestvica\n` +
                     `• \`!w\` - Tjedna ljestvica (uživo)\n` +
-                    `• \`!leaderboard\` - Tjedna snimka\n\n` +
+                    `• \`!leaderboard\` - Tjedna snimka\n` +
+                    `• \`!alltime\` - All-Time ljestvica\n\n` +
                     `🔧 *Ostalo:*\n` +
                     `• \`!ping\` - Provjeri je li bot aktivan\n` +
+                    `• \`!pet\` - Pomazi bota 🐶\n` +
+                    `• \`!bodovi\` - Objašnjenje bodovanja\n` +
                     `• \`!help\` - Prikaži ovu poruku\n\n` +
                     `🎮 *Kako poslati rezultat:*\n` +
                     `Proslijedi poruku iz TimeGuessr igre koja sadrži tvoj rezultat!`;

@@ -8,8 +8,10 @@ class Leaderboard {
                     return await this.generateDaily();
                 case 'weekly':
                     return await this.generateWeekly();
-                case 'weekly-snapshot': 
+                case 'weekly-snapshot':
                     return await this.generateWeeklySnapshot();
+                case 'alltime':
+                    return await this.generateAllTime();
                 default:
                     return 'Neispravan tip ljestvice';
             }
@@ -125,6 +127,42 @@ class Leaderboard {
 
         // Format results
         return this.formatWeeklySnapshotResults(playersWithActualBonuses, weekRange);
+    }
+
+    static async generateAllTime(limit = 10) {
+        // Query for all-time leaderboard with highest score per player
+        const { rows } = await db.query(`
+        SELECT 
+            p.name,
+            SUM(wa.total_points) AS alltime_points,
+            SUM(wa.points_awarded) AS base_points,
+            SUM(wa.bonus_points) AS bonus_points,
+            MAX(wa.highest_score) AS highest_score
+        FROM weekly_awards wa
+        JOIN players p ON wa.player_id = p.id
+        GROUP BY p.name
+        ORDER BY alltime_points DESC
+        LIMIT $1
+    `, [limit]);
+
+        if (rows.length === 0) {
+            return `🏆 All-Time Leaderboard\n\nNema podataka za all-time ljestvicu.`;
+        }
+
+        let message = `🏆 *All-Time Leaderboard* 🏆\n\n`;
+
+        rows.forEach((player, idx) => {
+            const rankEmoji = idx === 0 ? '🥇' :
+                idx === 1 ? '🥈' :
+                    idx === 2 ? '🥉' : `${idx + 1}.`;
+
+            message += `${rankEmoji} ${player.name}\n`;
+            message += `   🎯 Ukupno bodova: ${Number(player.alltime_points).toLocaleString('hr-HR')}\n`;
+            message += `   ⚡ Osnovno: ${Number(player.base_points).toLocaleString('hr-HR')} | ✨ Bonus: ${Number(player.bonus_points).toLocaleString('hr-HR')}\n`;
+            message += `   ⭐ Najveći rezultat | ${Number(player.highest_score).toLocaleString('hr-HR')}\n\n`;
+        });
+
+        return message;
     }
 
     static formatDailyResults(rows, gameNumber, averages) {
@@ -245,10 +283,10 @@ class Leaderboard {
             const bonusPoints = parseInt(player.bonus_points) || 0;
 
             // Check if player has bonus points indicating they won bonuses
-            if (bonusPoints >= 50) { 
+            if (bonusPoints >= 50) {
                 bonuses.push(`👑 Najviše pobjeda (${player.daily_wins}x)`);
             }
-            if (bonusPoints >= 30) { 
+            if (bonusPoints >= 30) {
                 bonuses.push(`🚀 Najveći rezultat (${parseInt(player.highest_score).toLocaleString()} bodova)`);
             }
 
@@ -269,7 +307,7 @@ class Leaderboard {
         // Get all players tied for the highest tiebreaker value
         const tiebreakerWinners = contenders.filter(p => (parseInt(p[tiebreakerField]) || 0) === maxTiebreakerValue);
 
-        // If still tied after tiebreaker, return the first one 
+        // If still tied after tiebreaker, return the first one
         return tiebreakerWinners[0];
     }
 
@@ -293,9 +331,9 @@ class Leaderboard {
 
     static async getTodaysGameNumber() {
         const { rows } = await db.query(`
-            SELECT MAX(game_number) AS game_number 
-            FROM scores 
-            WHERE DATE(created_at) = CURRENT_DATE 
+            SELECT MAX(game_number) AS game_number
+            FROM scores
+            WHERE DATE(created_at) = CURRENT_DATE
         `);
         return rows[0]?.game_number;
     }

@@ -5,6 +5,7 @@ const qrcode = require('qrcode-terminal');
 require('dotenv').config();
 const cron = require('node-cron');
 
+
 // Database setup
 require('./config/db');
 
@@ -42,7 +43,18 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
 
     // Message handling
     const MessageHandler = require('./handlers/messageHandler');
-    client.on('message_create', message => {
+    client.on('message_create', async message => {
+        if (message.from.endsWith('@g.us')) {
+            try {
+                const chat = await message.getChat();
+                if (chat.isGroup) {
+                    console.log(`📢 Poruka iz grupe: "${chat.name}" (ID: ${chat.id._serialized})`);
+                }
+            } catch (err) {
+                console.error('Greška pri dohvaćanju imena grupe:', err);
+            }
+        }
+        // Continue handling all messages as before
         MessageHandler.handle(message).catch(console.error);
     });
 
@@ -50,14 +62,18 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
     client.initialize();
 
 
-    // Start weekly calculation job
     const WeeklyPoints = require('./services/weeklyPoints');
+    const WeeklyAwards = require('./services/weeklyAwards'); 
+
     cron.schedule('59 23 * * 0', async () => { // Every Sunday at 23:59
         try {
             const weekStart = WeeklyPoints.getCurrentWeekStart();
             console.log(`Calculating weekly points for week starting ${weekStart}`);
             await WeeklyPoints.calculateForWeek(weekStart);
             console.log('Weekly points calculation completed');
+
+            await WeeklyAwards.finalizeWeeklyAwards(weekStart);
+            console.log('Weekly awards finalized and stored');
         } catch (error) {
             console.error('Weekly points job failed:', error);
         }
