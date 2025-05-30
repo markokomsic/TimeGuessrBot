@@ -59,9 +59,9 @@ class MessageHandler {
                     senderName = contact.pushname || contact.name || 'Nepoznat igrač';
 
                     if (message.from.endsWith('@g.us')) {
-                        // Always use message.author in groups
-                        if (message.author && message.author.endsWith('@c.us')) {
-                            senderNumber = message.author.replace('@c.us', '');
+                        // Always use message.participant in groups
+                        if (message.participant && message.participant.endsWith('@c.us')) {
+                            senderNumber = message.participant.replace('@c.us', '');
                         }
                     } else if (message.from.endsWith('@c.us')) {
                         // Private chat

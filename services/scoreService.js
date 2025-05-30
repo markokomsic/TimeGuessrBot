@@ -28,10 +28,10 @@ class ScoreService {
             const contact = await message.getContact();
             senderName = contact.pushname || contact.name || 'Unknown Player';
 
-            // Always extract phone number (strip @c.us)
             if (message.from.endsWith('@g.us')) {
-                if (message.author && message.author.endsWith('@c.us')) {
-                    senderNumber = message.author.replace('@c.us', '');
+                // Always use message.participant in groups
+                if (message.participant && message.participant.endsWith('@c.us')) {
+                    senderNumber = message.participant.replace('@c.us', '');
                 }
             } else if (message.from.endsWith('@c.us')) {
                 senderNumber = message.from.replace('@c.us', '');
