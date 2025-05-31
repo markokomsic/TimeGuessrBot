@@ -5,7 +5,6 @@ const qrcode = require('qrcode-terminal');
 require('dotenv').config();
 const cron = require('node-cron');
 
-
 // Database setup
 require('./config/db');
 
@@ -37,8 +36,33 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
     });
 
     // Bot is ready
-    client.on('ready', () => {
+    client.on('ready', async () => {
         console.log('🚀 Client is ready!');
+
+        // ─── BEGIN ONCE-OFF MIGRATION SNIPPET ───
+        try {
+            // Replace this with your actual group JID
+            const GROUP_JID = '120363402300964823@g.us';
+
+            // Fetch the GroupChat object
+            const chat = await client.getChatById(GROUP_JID);
+
+            if (!chat.isGroup) {
+                console.warn(`⚠️  Warning: ${GROUP_JID} was not a group chat.`);
+            } else {
+                console.log(`\n📋 Group Name: "${chat.name}" (ID: ${GROUP_JID})`);
+                console.log(`👥 Total Participants: ${chat.participants.length}\n`);
+
+                // Iterate through each participant and log their id.user
+                chat.participants.forEach((gp, idx) => {
+                    console.log(`${String(idx + 1).padStart(2, '0')}. ${gp.id.user}`);
+                });
+                console.log('\n✅ Finished printing all participant IDs.\n');
+            }
+        } catch (err) {
+            console.error('❌ Error fetching group participants:', err);
+        }
+        // ─── END ONCE-OFF MIGRATION SNIPPET ───
     });
 
     // Message handling
@@ -61,9 +85,8 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
     // Start the bot
     client.initialize();
 
-
     const WeeklyPoints = require('./services/weeklyPoints');
-    const WeeklyAwards = require('./services/weeklyAwards'); 
+    const WeeklyAwards = require('./services/weeklyAwards');
 
     cron.schedule('59 23 * * 0', async () => { // Every Sunday at 23:59
         try {
