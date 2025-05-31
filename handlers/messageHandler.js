@@ -67,14 +67,14 @@ class MessageHandler {
                 const stats = await Player.getStats(player.id);
 
                 const statsMsg =
-                    `👤 *Tvoje statistike:*
+                    `👤 *Tvoje statistike* 👤
 
-• Ukupno odigranih igara: ${stats.games_played}
-• Najbolji rezultat: ${Number(stats.best_score).toLocaleString('hr-HR')}
-• Prosječan rezultat: ${Number(stats.avg_score).toLocaleString('hr-HR')}
-• Broj dnevnih pobjeda: ${stats.daily_wins}
-• Broj tjednih pobjeda: ${stats.weekly_wins}
-• All-Time bodovi: ${Number(stats.alltime_points).toLocaleString('hr-HR')}`;
+🎮 *Ukupno igara:* ${stats.games_played}
+🏆 *Najbolji rezultat:* ${Number(stats.best_score).toLocaleString('hr-HR')}
+📈 *Prosječan rezultat:* ${Number(stats.avg_score).toLocaleString('hr-HR')}
+🏅 *Dnevne pobjede:* ${stats.daily_wins}
+🎖️ *Tjedne pobjede:* ${stats.weekly_wins}
+🌟 *All-Time bodovi:* ${Number(stats.alltime_points).toLocaleString('hr-HR')}`;
 
                 await message.reply(statsMsg);
                 return;
@@ -100,7 +100,7 @@ class MessageHandler {
                     `📋 *Objašnjenje bodovanja TimeGuessr*
 
 *Dnevni bodovi* (služe za tjedni poredak):
-  🥇 10, 🥈 8, 🥉 7, 4., 6, 5., 5, 6., 4, 7., 3, 8., 2, 9., 1
+ 🥇 10 - 8 - 7 - 6 - 5 - 4 - 3 - 2 - 1 - 0
 
 *Weekly bodovi* (dodjeljuju se prema tjednom poretku, ne zbrajaju se dnevni bodovi!):
   1. mjesto: 250
@@ -117,6 +117,7 @@ class MessageHandler {
 *Weekly bonusi:*
   +50 bodova za najviše dnevnih pobjeda u tjednu
   +30 bodova za najveći dnevni rezultat u tjednu
+  _Tiebreakeri se rješavaju prema najvećoj tjednom sumi dnevnih rezultata._
 
 *All-Time ljestvica:*
   Zbroj svih osvojenih weekly bodova (uključujući bonuse) kroz sve tjedne.
@@ -134,7 +135,6 @@ class MessageHandler {
 • \`!w\` - Tjedna ljestvica (uživo)
 • \`!leaderboard\` - Tjedna snimka
 • \`!alltime\` - All-Time ljestvica
-
 • \`!me\` - Tvoje osobne statistike
 
 🔧 *Ostalo:*

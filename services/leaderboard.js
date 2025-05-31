@@ -201,6 +201,7 @@ class Leaderboard {
             message += `   🎯 Tjedni bodovi: ${player.base_points}\n`;
             message += `   📊 Tjedna suma: ${Math.round(player.total_daily_scores).toLocaleString()} bodova\n`;
             message += `   ⭐ Prosjek: ${Math.round(player.average_score).toLocaleString()} bodova\n`;
+            message += `   📅 Odigrano dana: ${player.games_played} / 7\n`;
 
             if (player.bonuses.length > 0) {
                 message += `   🏅 ${player.bonuses.join(' • ')}\n`;
