@@ -9,6 +9,8 @@ console.log('DATABASE_URL:', process.env.DATABASE_URL);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('All env vars:', Object.keys(process.env).filter(key => key.includes('MONGO') || key.includes('DATABASE')));
 console.log('=====================================');
+console.log('Resolved MONGO_URL:', process.env.MONGO_URL);
+console.log('Resolved DATABASE_URL:', process.env.DATABASE_URL);
 
 const cron = require('node-cron');
 
@@ -16,7 +18,8 @@ const cron = require('node-cron');
 require('./config/db');
 
 // Initialize MongoDB for WhatsApp session
-mongoose.connect(process.env.MONGODB_URI).then(() => {
+const mongoURI = process.env.MONGO_URL || process.env.MONGODB_URI;
+mongoose.connect(mongoURI).then(() => {
     console.log('Connected to MongoDB!');
 
     const store = new MongoStore({ mongoose });
