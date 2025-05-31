@@ -3,6 +3,13 @@ const { MongoStore } = require('wwebjs-mongo');
 const mongoose = require('mongoose');
 const qrcode = require('qrcode-terminal');
 require('dotenv').config();
+console.log('=== ENVIRONMENT VARIABLES DEBUG ===');
+console.log('MONGODB_URI:', process.env.MONGODB_URI);
+console.log('DATABASE_URL:', process.env.DATABASE_URL);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('All env vars:', Object.keys(process.env).filter(key => key.includes('MONGO') || key.includes('DATABASE')));
+console.log('=====================================');
+
 const cron = require('node-cron');
 
 // Database setup
