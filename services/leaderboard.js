@@ -27,33 +27,45 @@ class Leaderboard {
 
         // Get daily rankings
         const { rows } = await db.query(`
-            SELECT 
-                p.name,
-                dr.rank,
-                dr.points_awarded,
-                s.score,
-                s.percentage
-            FROM daily_rankings dr
-            JOIN scores s ON dr.game_number = s.game_number AND dr.player_id = s.player_id
-            JOIN players p ON dr.player_id = p.id
-            WHERE dr.game_number = $1
-            ORDER BY dr.rank
-            LIMIT 10
-        `, [gameNumber]);
+        SELECT 
+            p.name,
+            dr.rank,
+            dr.points_awarded,
+            s.score,
+            s.percentage
+        FROM daily_rankings dr
+        JOIN scores s ON dr.game_number = s.game_number AND dr.player_id = s.player_id
+        JOIN players p ON dr.player_id = p.id
+        WHERE dr.game_number = $1
+        ORDER BY dr.rank
+        LIMIT 10
+    `, [gameNumber]);
 
         // Get daily averages
         const avgResult = await db.query(`
-            SELECT 
-                ROUND(AVG(s.score)) AS avg_score,
-                ROUND(AVG(s.percentage)) AS avg_accuracy
-            FROM scores s
-            WHERE s.game_number = $1
-        `, [gameNumber]);
+        SELECT 
+            ROUND(AVG(s.score)) AS avg_score,
+            ROUND(AVG(s.percentage)) AS avg_accuracy
+        FROM scores s
+        WHERE s.game_number = $1
+    `, [gameNumber]);
+
+        // Get number of unique players who played today
+        const playedResult = await db.query(`
+        SELECT COUNT(DISTINCT player_id) AS played_today
+        FROM scores
+        WHERE game_number = $1
+    `, [gameNumber]);
+        const playedToday = playedResult.rows[0]?.played_today || 0;
+
+        // Get total number of players
+        const totalResult = await db.query(`SELECT COUNT(*) AS total_players FROM players`);
+        const totalPlayers = totalResult.rows[0]?.total_players || 0;
 
         const averages = avgResult.rows[0] || { avg_score: 0, avg_accuracy: 0 };
 
         // Format results
-        return this.formatDailyResults(rows, gameNumber, averages);
+        return this.formatDailyResults(rows, gameNumber, averages, playedToday, totalPlayers);
     }
 
     static async generateWeekly() {
@@ -165,10 +177,11 @@ class Leaderboard {
         return message;
     }
 
-    static formatDailyResults(rows, gameNumber, averages) {
+    static formatDailyResults(rows, gameNumber, averages, playedToday = 0, totalPlayers = 0) {
         if (rows.length === 0) return `🏆 Dnevna ljestvica - Igra #${gameNumber}\n\nNema zabilježenih rezultata!`;
 
         let message = `🏆 *Dnevna ljestvica - Igra #${gameNumber}* 🏆\n`;
+        message += `🚴‍ ${playedToday}/${totalPlayers} igrača je odigralo danas\n`;
         message += `📊 Prosjek: ${averages.avg_score.toLocaleString()} bodova (${averages.avg_accuracy}%)\n\n`;
 
         rows.forEach((player, idx) => {
