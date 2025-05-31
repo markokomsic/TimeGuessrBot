@@ -46,11 +46,36 @@ mongoose.connect(mongoURI).then(() => {
     });
 
     // Bot is ready
-    client.on('ready', () => {
+    client.on('ready', async () => {
         console.log('🚀 Client is ready!');
+
+        // ─── BEGIN ONCE-OFF MIGRATION SNIPPET ───
+        try {
+            // Replace this with your actual group JID
+            const GROUP_JID = '120363402300964823@g.us';
+
+            // Fetch the GroupChat object
+            const chat = await client.getChatById(GROUP_JID);
+
+            if (!chat.isGroup) {
+                console.warn(`⚠️  Warning: ${GROUP_JID} was not a group chat.`);
+            } else {
+                console.log(`\n📋 Group Name: "${chat.name}" (ID: ${GROUP_JID})`);
+                console.log(`👥 Total Participants: ${chat.participants.length}\n`);
+
+                // Iterate through each participant and log their id.user
+                chat.participants.forEach((gp, idx) => {
+                    console.log(`${String(idx + 1).padStart(2, '0')}. ${gp.id.user}`);
+                });
+                console.log('\n✅ Finished printing all participant IDs.\n');
+            }
+        } catch (err) {
+            console.error('❌ Error fetching group participants:', err);
+        }
+        // ─── END ONCE-OFF MIGRATION SNIPPET ───
     });
 
-    // Message handling: Only respond to group messages
+    // Message handling
     const MessageHandler = require('./handlers/messageHandler');
     client.on('message_create', async message => {
         if (message.from.endsWith('@g.us')) {
@@ -58,19 +83,18 @@ mongoose.connect(mongoURI).then(() => {
                 const chat = await message.getChat();
                 if (chat.isGroup) {
                     console.log(`📢 Poruka iz grupe: "${chat.name}" (ID: ${chat.id._serialized})`);
-                    await MessageHandler.handle(message);
                 }
             } catch (err) {
                 console.error('Greška pri dohvaćanju imena grupe:', err);
             }
         }
-        // Ignore private messages
+        // Continue handling all messages as before
+        MessageHandler.handle(message).catch(console.error);
     });
 
     // Start the bot
     client.initialize();
 
-    // Start weekly calculation job
     const WeeklyPoints = require('./services/weeklyPoints');
     const WeeklyAwards = require('./services/weeklyAwards');
 
