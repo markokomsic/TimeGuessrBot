@@ -7,24 +7,6 @@ const Player = require('../models/Player');
 let petCounter = 0;
 
 class MessageHandler {
-    /**
-     * Returns the pure phone number of the sender,
-     * whether it’s a 1:1 chat or a group message.
-     * Strips off the "@c.us" and ignores the group JID.
-     */
-    static getSenderNumber(message) {
-        if (message.from.endsWith('@g.us')) {
-            // Group message - use message.author
-            if (message.author && message.author.endsWith('@c.us')) {
-                return message.author.replace('@c.us', '');
-            }
-        } else if (message.from.endsWith('@c.us')) {
-            // Private message - use message.from
-            return message.from.replace('@c.us', '');
-        }
-        return null;
-    }
-
     static async handle(message) {
         console.log(`📩 Message from ${message.from}: ${message.body.substring(0, 50)}...`);
 
@@ -65,18 +47,19 @@ class MessageHandler {
 
             // Handle !me command
             if (message.body === '!me') {
-                const senderNumber = this.getSenderNumber(message);
-                if (!senderNumber) {
-                    await message.reply('Nije moguće prepoznati tvoj broj. Pošalji rezultat iz privatnog chata ako si novi igrač.');
-                    return;
-                }
-
+                let senderNumber = '';
                 let senderName = 'Nepoznat igrač';
                 try {
                     const contact = await message.getContact();
+                    senderNumber = contact.number;
                     senderName = contact.pushname || contact.name || senderName;
                 } catch (error) {
                     await message.reply('Greška pri dohvaćanju tvojih podataka.');
+                    return;
+                }
+
+                if (!senderNumber || !senderNumber.match(/^\d+$/)) {
+                    await message.reply('Nije moguće prepoznati tvoj broj. Pošalji rezultat iz privatnog chata ako si novi igrač.');
                     return;
                 }
 
