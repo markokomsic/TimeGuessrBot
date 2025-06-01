@@ -272,8 +272,12 @@ class Leaderboard {
         // Get all players tied for highest score
         const scoreContenders = players.filter(p => (parseInt(p.highest_score) || 0) === highestScore && highestScore > 0);
 
-        // Apply tiebreaker: highest Tjedna suma (total_daily_scores)
-        const winsWinner = this.applyTiebreaker(winsContenders, 'total_daily_scores');
+        // For daily wins: if tie, no one gets the bonus
+        let winsWinner = null;
+        if (winsContenders.length === 1) {
+            winsWinner = winsContenders[0];
+        }
+        // For highest score: use tiebreaker
         const scoreWinner = this.applyTiebreaker(scoreContenders, 'total_daily_scores');
 
         // Assign bonuses to players
@@ -296,16 +300,20 @@ class Leaderboard {
     }
 
     static determineBonusWinnersForSnapshot(players) {
-        // For snapshots, we need to reverse-engineer who actually won the bonuses
-        // based on their bonus_points values
+        // Find the highest daily wins value
+        const mostWins = Math.max(...players.map(p => parseInt(p.daily_wins) || 0));
+        // Get all players tied for most wins
+        const winsContenders = players.filter(p => (parseInt(p.daily_wins) || 0) === mostWins && mostWins > 0);
+
         return players.map(player => {
             const bonuses = [];
             const bonusPoints = parseInt(player.bonus_points) || 0;
 
-            // Check if player has bonus points indicating they won bonuses
-            if (bonusPoints >= 50) {
+            // Only assign daily wins bonus if there is a single winner
+            if (mostWins > 0 && winsContenders.length === 1 && player.daily_wins == mostWins && bonusPoints >= 50) {
                 bonuses.push(`👑 Najviše pobjeda (${player.daily_wins}x)`);
             }
+            
             if (bonusPoints >= 30) {
                 bonuses.push(`🚀 Najveći rezultat (${parseInt(player.highest_score).toLocaleString()} bodova)`);
             }
