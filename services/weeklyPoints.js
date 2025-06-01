@@ -4,7 +4,7 @@ class WeeklyPoints {
     static async calculateForWeek(startDate) {
         // Get all daily rankings for the week
         const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 6);
+        endDate.setDate(endDate.getDate() + 7);
 
         const { rows } = await db.query(`
             SELECT 

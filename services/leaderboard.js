@@ -71,27 +71,33 @@ class Leaderboard {
     static async generateWeekly() {
         const weekStart = this.getCurrentWeekStart();
         const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setDate(weekEnd.getDate() + 6); // This is Sunday
+
+        // For display purposes - show Monday to Sunday range
         const weekRange = `${this.formatCroatianDate(weekStart)} - ${this.formatCroatianDate(weekEnd)}`;
+
+        // For SQL query - need to include the full Sunday, so add one more day
+        const queryEndDate = new Date(weekEnd);
+        queryEndDate.setDate(queryEndDate.getDate() + 1); // This becomes Monday 00:00:00
 
         // Get weekly stats without bonuses
         const { rows } = await db.query(`
-            SELECT 
-                p.name,
-                SUM(dr.points_awarded) AS base_points,
-                COUNT(dr.id) FILTER (WHERE dr.rank = 1) AS daily_wins,
-                MAX(s.score) AS highest_score,
-                AVG(s.score) AS average_score,
-                SUM(s.score) AS total_daily_scores,
-                COUNT(DISTINCT dr.game_number) AS games_played
-            FROM daily_rankings dr
-            JOIN scores s ON dr.game_number = s.game_number AND dr.player_id = s.player_id
-            JOIN players p ON dr.player_id = p.id
-            WHERE dr.created_at BETWEEN $1 AND $2
-            GROUP BY p.name
-            ORDER BY base_points DESC
-            LIMIT 10
-        `, [weekStart, weekEnd]);
+        SELECT 
+            p.name,
+            SUM(dr.points_awarded) AS base_points,
+            COUNT(dr.id) FILTER (WHERE dr.rank = 1) AS daily_wins,
+            MAX(s.score) AS highest_score,
+            AVG(s.score) AS average_score,
+            SUM(s.score) AS total_daily_scores,
+            COUNT(DISTINCT dr.game_number) AS games_played
+        FROM daily_rankings dr
+        JOIN scores s ON dr.game_number = s.game_number AND dr.player_id = s.player_id
+        JOIN players p ON dr.player_id = p.id
+        WHERE dr.created_at BETWEEN $1 AND $2
+        GROUP BY p.name
+        ORDER BY base_points DESC
+        LIMIT 10
+    `, [weekStart, queryEndDate]); // Use queryEndDate instead of weekEnd
 
         if (rows.length === 0) {
             return `🏆 Tjedna ljestvica (${weekRange})\n\nNema podataka za ovaj tjedan.`;
@@ -107,28 +113,28 @@ class Leaderboard {
     static async generateWeeklySnapshot() {
         const weekStart = this.getCurrentWeekStart();
         const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setDate(weekEnd.getDate() + 6); // Display Sunday
         const weekRange = `${this.formatCroatianDate(weekStart)} - ${this.formatCroatianDate(weekEnd)}`;
 
-        // Get saved weekly rankings
+        // Get saved weekly rankings (FINALIZED results)
         const { rows } = await db.query(`
-            SELECT 
-                p.name,
-                wp.total_points + wp.bonus_points AS final_total,
-                wp.total_points AS base_points,
-                wp.bonus_points,
-                wp.daily_wins,
-                wp.highest_score,
-                (SELECT SUM(score) FROM scores s 
-                 WHERE s.player_id = p.id 
-                   AND s.created_at BETWEEN $1 AND $2
-                ) AS total_daily_scores
-            FROM weekly_points wp
-            JOIN players p ON wp.player_id = p.id
-            WHERE wp.week_start = $1
-            ORDER BY final_total DESC
-            LIMIT 10
-        `, [weekStart, weekEnd]);
+        SELECT 
+            p.name,
+            wp.total_points + wp.bonus_points AS final_total,
+            wp.total_points AS base_points,
+            wp.bonus_points,
+            wp.daily_wins,
+            wp.highest_score,
+            (SELECT SUM(score) FROM scores s 
+             WHERE s.player_id = p.id 
+               AND s.created_at BETWEEN $1 AND $2
+            ) AS total_daily_scores
+        FROM weekly_points wp
+        JOIN players p ON wp.player_id = p.id
+        WHERE wp.week_start = $1
+        ORDER BY final_total DESC
+        LIMIT 10
+    `, [weekStart, new Date(weekStart + 'T00:00:00').toISOString()]);
 
         if (rows.length === 0) {
             return `🏆 Tjedna snimka (${weekRange})\n\n⏰ Tjedna snimka još nije spremljena.`;
