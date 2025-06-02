@@ -21,7 +21,9 @@ app.post('/api/cron/weekly-points', async (req, res) => {
         const WeeklyPoints = require('./services/weeklyPoints');
         const WeeklyAwards = require('./services/weeklyAwards');
 
-        const { weekStart } = require('./services/dateHelper').getCurrentWeekInfo();
+        //  const { weekStart } = require('./services/dateHelper').getCurrentWeekInfo();
+        const weekStart = new Date('2025-05-29T02:00:00UTC'); // Thursday, May 29, 2:00 AM UTC
+
         console.log(`Calculating weekly points for week starting ${weekStart}`);
 
         await WeeklyPoints.calculateForWeek(weekStart);
