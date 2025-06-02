@@ -55,35 +55,34 @@ class WeeklyLeaderboard {
         const { weekStart, weekEnd, weekRange, queryEndDate } = DateHelper.getPreviousWeekInfo();
 
         const { rows } = await db.query(`
-    SELECT 
-        p.name,
-        wa.total_points + wa.bonus_points AS final_total,
-        wa.total_points AS base_points,
-        wa.bonus_points,
-        wa.rank,
-        wa.highest_score,
-        (SELECT SUM(score) FROM scores s 
-         WHERE s.player_id = p.id 
-           AND s.created_at BETWEEN $1 AND $2
-        ) AS total_daily_scores,
-        (SELECT COUNT(DISTINCT game_number) FROM scores s
-         WHERE s.player_id = p.id
-           AND s.created_at BETWEEN $1 AND $2
-        ) AS games_played
-    FROM weekly_awards wa
-    JOIN players p ON wa.player_id = p.id
-    WHERE wa.week_start = $1
-    ORDER BY final_total DESC
-    LIMIT 10
-`, [weekStart, queryEndDate]);
+        SELECT 
+            p.name,
+            wa.total_points AS base_points,  // Just get base points here
+            wa.bonus_points,
+            wa.total_points + wa.bonus_points AS final_total,  // Still calculate total for sorting
+            wa.rank,
+            wa.highest_score,
+            (SELECT SUM(score) FROM scores s 
+             WHERE s.player_id = p.id 
+               AND s.created_at BETWEEN $1 AND $2
+            ) AS total_daily_scores,
+            (SELECT COUNT(DISTINCT game_number) FROM scores s
+             WHERE s.player_id = p.id
+               AND s.created_at BETWEEN $1 AND $2
+            ) AS games_played
+        FROM weekly_awards wa
+        JOIN players p ON wa.player_id = p.id
+        WHERE wa.week_start = $1
+        ORDER BY final_total DESC
+        LIMIT 10
+    `, [weekStart, queryEndDate]);
 
         if (rows.length === 0) {
             return `🏆 Tjedna snimka (${weekRange})\n\n⏰ Tjedna snimka još nije spremljena.`;
         }
-
-        const playersWithBonuses = BonusCalculator.determineBonusWinnersForSnapshot(rows);
-        return this.formatSnapshotResults(playersWithBonuses, weekRange);
+        return this.formatSnapshotResults(rows, weekRange);
     }
+
 
     static formatLiveResults(players, weekRange) {
         if (players.length === 0) {
@@ -125,10 +124,6 @@ class WeeklyLeaderboard {
             message += `   ⚡ Osnovno: ${player.base_points} | ✨ Bonus: ${player.bonus_points}\n`;
             message += `   📊 Tjedna suma: ${Math.round(player.total_daily_scores).toLocaleString()} bodova\n`;
             message += `   📥 Odigrano dana: ${player.games_played} / 7\n`;
-
-            if (player.bonuses && player.bonuses.length > 0) {
-                message += `   🏅 ${player.bonuses.join(' • ')}\n`;
-            }
             message += '\n';
         });
 
