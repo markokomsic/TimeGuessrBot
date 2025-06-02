@@ -57,9 +57,9 @@ class WeeklyLeaderboard {
         const { rows } = await db.query(`
         SELECT 
             p.name,
-            wa.total_points AS base_points,  // Just get base points here
+            wa.total_points AS base_points,
             wa.bonus_points,
-            wa.total_points + wa.bonus_points AS final_total,  // Still calculate total for sorting
+            wa.total_points + wa.bonus_points AS final_total,
             wa.rank,
             wa.highest_score,
             (SELECT SUM(score) FROM scores s 
@@ -80,9 +80,9 @@ class WeeklyLeaderboard {
         if (rows.length === 0) {
             return `🏆 Tjedna snimka (${weekRange})\n\n⏰ Tjedna snimka još nije spremljena.`;
         }
+
         return this.formatSnapshotResults(rows, weekRange);
     }
-
 
     static formatLiveResults(players, weekRange) {
         if (players.length === 0) {
