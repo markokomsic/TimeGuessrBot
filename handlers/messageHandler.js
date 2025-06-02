@@ -22,11 +22,11 @@ class MessageHandler {
                     await Commands.weekly(message);
                     return;
 
-                case '!leaderboard':
+                case '!lw':
                     await Commands.leaderboard(message);
                     return;
 
-                case '!alltime':
+                case '!goat':
                     await Commands.alltime(message);
                     return;
 

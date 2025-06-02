@@ -6,11 +6,11 @@ const qrcode = require('qrcode-terminal');
 require('dotenv').config();
 require('./config/db');
 
-// ✅ Initialize Express server
-const app = express();
-app.use(express.json()); // Required to parse JSON POST requests
 
-// ✅ Cron job endpoint
+const app = express();
+app.use(express.json()); 
+
+// Cron job endpoint
 app.post('/api/cron/weekly-points', async (req, res) => {
     try {
         const authHeader = req.headers.authorization;
@@ -21,9 +21,9 @@ app.post('/api/cron/weekly-points', async (req, res) => {
         const WeeklyPoints = require('./services/weeklyPoints');
         const WeeklyAwards = require('./services/weeklyAwards');
 
-        //  const { weekStart } = require('./services/dateHelper').getCurrentWeekInfo();
-        const weekStart = new Date('2025-05-26T00:00:00Z'); // Thursday, May 29, 2:00 AM UTC
-
+       // const { weekStart } = require('./services/dateHelper').getCurrentWeekInfo();
+        const weekStart = new Date('2025-05-29T02:00:00Z');
+        
         console.log(`Calculating weekly points for week starting ${weekStart}`);
 
         await WeeklyPoints.calculateForWeek(weekStart);
@@ -46,7 +46,7 @@ app.post('/api/cron/weekly-points', async (req, res) => {
     }
 });
 
-// ✅ Connect to MongoDB and initialize WhatsApp bot
+// Connect to MongoDB and initialize WhatsApp bot
 mongoose.connect(process.env.MONGODB_URI).then(() => {
     console.log('Connected to MongoDB!');
 
@@ -95,7 +95,7 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
     console.error('❌ MongoDB connection error:', err);
 });
 
-// ✅ Start Express server (must be last)
+
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
     console.log(`✅ Express server running on port ${PORT}`);

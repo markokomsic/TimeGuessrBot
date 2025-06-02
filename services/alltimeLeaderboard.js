@@ -44,7 +44,7 @@ class AllTimeLeaderboard {
     }
 
     static getRankEmoji(index) {
-        return index === 0 ? '🥇' :
+        return index === 0 ? '🐐' :
             index === 1 ? '🥈' :
                 index === 2 ? '🥉' : `${index + 1}.`;
     }

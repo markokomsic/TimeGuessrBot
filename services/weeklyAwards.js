@@ -2,7 +2,7 @@ const db = require('../config/db');
 const WEEKLY_POINTS = [250, 180, 150, 120, 100, 80, 60, 40, 20, 10];
 
 async function finalizeWeeklyAwards(weekStart) {
-    // Get weekly leaderboard, sorted by total_points + bonus_points
+    
     const { rows } = await db.query(`
         SELECT player_id, total_points, bonus_points, highest_score
         FROM weekly_points

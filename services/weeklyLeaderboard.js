@@ -52,9 +52,8 @@ class WeeklyLeaderboard {
     }
 
     static async generateSnapshot() {
-        const { weekStart, weekEnd, weekRange } = DateHelper.getPreviousWeekInfo();
+        const { weekStart, weekEnd, weekRange, queryEndDate } = DateHelper.getPreviousWeekInfo();
 
-        // Query the finalized weekly_awards table for the previous week
         const { rows } = await db.query(`
         SELECT 
             p.name,
@@ -72,7 +71,7 @@ class WeeklyLeaderboard {
         WHERE wa.week_start = $1
         ORDER BY final_total DESC
         LIMIT 10
-    `, [weekStart, weekEnd]);
+    `, [weekStart, queryEndDate]);
 
         if (rows.length === 0) {
             return `🏆 Tjedna snimka (${weekRange})\n\n⏰ Tjedna snimka još nije spremljena.`;
@@ -121,6 +120,7 @@ class WeeklyLeaderboard {
             message += `   🎯 Ukupno bodova: ${player.final_total}\n`;
             message += `   ⚡ Osnovno: ${player.base_points} | ✨ Bonus: ${player.bonus_points}\n`;
             message += `   📊 Tjedna suma: ${Math.round(player.total_daily_scores).toLocaleString()} bodova\n`;
+            message += `   📥 Odigrano dana: ${player.games_played} / 7\n`;
 
             if (player.bonuses && player.bonuses.length > 0) {
                 message += `   🏅 ${player.bonuses.join(' • ')}\n`;

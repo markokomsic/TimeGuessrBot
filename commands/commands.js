@@ -115,8 +115,8 @@ class Commands {
             📊 *Ljestvice:*
             • \`!d\` - Dnevna ljestvica
             • \`!w\` - Tjedna ljestvica (uživo)
-            • \`!leaderboard\` - Tjedna snimka
-            • \`!alltime\` - All-Time ljestvica
+            • \`!lw\` - Ljestvica prošlog tjedna s bonusima
+            • \`!goat\` - All-Time ljestvica
             • \`!me\` - Tvoje osobne statistike
 
             🔧 *Ostalo:*

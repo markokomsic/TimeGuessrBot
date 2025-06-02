@@ -6,7 +6,7 @@ class DateHelper {
         const weekRange = `${this.formatCroatianDate(weekStart)} - ${this.formatCroatianDate(weekEnd)}`;
         // For SQL query - need to include the full Sunday, so add one more day
         const queryEndDate = new Date(weekEnd);
-        queryEndDate.setDate(queryEndDate.getDate() + 1); // This becomes Monday 00:00:00
+        queryEndDate.setDate(queryEndDate.getDate() + 1); 
         return { weekStart, weekEnd, weekRange, queryEndDate };
     }
 
@@ -17,7 +17,7 @@ class DateHelper {
         const weekRange = `${this.formatCroatianDate(weekStart)} - ${this.formatCroatianDate(weekEnd)}`;
         // For SQL query - need to include the full Sunday, so add one more day
         const queryEndDate = new Date(weekEnd);
-        queryEndDate.setDate(queryEndDate.getDate() + 1); // This becomes Monday 00:00:00
+        queryEndDate.setDate(queryEndDate.getDate() + 1); 
         return { weekStart, weekEnd, weekRange, queryEndDate };
     }
 
@@ -33,7 +33,7 @@ class DateHelper {
     static getPreviousWeekStart() {
         const now = new Date();
         const day = now.getDay();
-        const diff = now.getDate() - day + (day === 0 ? -6 : 1) - 7; // Subtract 7 days for previous week
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1) - 7; 
         const weekStart = new Date(now.setDate(diff));
         weekStart.setHours(0, 0, 0, 0);
         return weekStart.toISOString().split('T')[0];
