@@ -4,8 +4,6 @@ const mongoose = require('mongoose');
 const qrcode = require('qrcode-terminal');
 require('dotenv').config();
 const cron = require('node-cron');
-
-// Database setup
 require('./config/db');
 
 // Initialize MongoDB for WhatsApp session
@@ -35,7 +33,6 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
         console.log('✅ Session saved to MongoDB!');
     });
 
-    // Bot is ready
     client.on('ready', () => {
         console.log('🚀 Client is ready!');
     });
@@ -60,21 +57,37 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
     // Start the bot
     client.initialize();
 
-    // Start weekly calculation job
-    const WeeklyPoints = require('./services/weeklyPoints');
-    const WeeklyAwards = require('./services/weeklyAwards');
-
-    cron.schedule('59 23 * * 0', async () => { // Every Sunday at 23:59
+    
+    app.post('/api/cron/weekly-points', async (req, res) => {
         try {
+            const authHeader = req.headers.authorization;
+            if (!authHeader || authHeader !== `Bearer ${process.env.CRON_API_KEY}`) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+
+            const WeeklyPoints = require('./services/weeklyPoints');
+            const WeeklyAwards = require('./services/weeklyAwards');
+
             const weekStart = WeeklyPoints.getCurrentWeekStart();
             console.log(`Calculating weekly points for week starting ${weekStart}`);
+
             await WeeklyPoints.calculateForWeek(weekStart);
             console.log('Weekly points calculation completed');
 
             await WeeklyAwards.finalizeWeeklyAwards(weekStart);
             console.log('Weekly awards finalized and stored');
+
+            res.json({
+                success: true,
+                message: 'Weekly points calculation completed',
+                weekStart: weekStart
+            });
         } catch (error) {
             console.error('Weekly points job failed:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
         }
     });
 }).catch(err => {
