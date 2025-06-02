@@ -57,9 +57,9 @@ class WeeklyLeaderboard {
         const { rows } = await db.query(`
         SELECT 
             p.name,
-            wa.total_points AS base_points,
+            wa.points_awarded AS base_points,  
             wa.bonus_points,
-            wa.total_points + wa.bonus_points AS final_total,
+            wa.total_points AS final_total,    
             wa.rank,
             wa.highest_score,
             (SELECT SUM(score) FROM scores s 
