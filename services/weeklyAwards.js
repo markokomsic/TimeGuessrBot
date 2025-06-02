@@ -2,12 +2,12 @@ const db = require('../config/db');
 const WEEKLY_POINTS = [250, 180, 150, 120, 100, 80, 60, 40, 20, 10];
 
 async function finalizeWeeklyAwards(weekStart) {
-    
+    // Order by the sum of daily points (or whatever you use for live ranking)
     const { rows } = await db.query(`
-        SELECT player_id, total_points, bonus_points, highest_score
+        SELECT player_id, bonus_points, highest_score, total_daily_scores
         FROM weekly_points
         WHERE week_start = $1
-        ORDER BY (total_points + bonus_points) DESC
+        ORDER BY total_daily_scores DESC
         LIMIT 10
     `, [weekStart]);
 
@@ -32,7 +32,7 @@ async function finalizeWeeklyAwards(weekStart) {
             points_awarded,
             player.bonus_points,
             total_points,
-            player.highest_score 
+            player.highest_score
         ]);
     }
 }
