@@ -4,7 +4,7 @@ async function finalizeWeeklyAwards(weekStart) {
     SELECT player_id, total_points, bonus_points, highest_score
     FROM weekly_points
     WHERE week_start = $1
-    ORDER BY (total_points + bonus_points) DESC
+    ORDER BY total_points DESC
     LIMIT 10
 `, [weekStart]);
 
