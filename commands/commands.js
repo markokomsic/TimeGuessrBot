@@ -133,7 +133,8 @@ Zbroj svih osvojenih weekly bodova (uključujući bonuse) kroz sve tjedne.
 • \`!help\` - Prikaži ovu poruku
 
 🎮 *Kako poslati rezultat:*
-Proslijedi poruku iz TimeGuessr igre koja sadrži tvoj rezultat!`;
+Proslijedi poruku iz TimeGuessr -> Share results!
+_Rezultati se spremaju od 9:00 do 0:00,iza tog nisu važeči_`;
 
         await message.reply(help_message);
     }

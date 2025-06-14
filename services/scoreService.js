@@ -12,6 +12,8 @@ class ScoreService {
         return rows[0]?.game_number ? parseInt(rows[0].game_number, 10) : null;
     }
 
+
+
     static async processScore(message) {
         const text = message.body;
         if (!this.isTimeGuessrMessage(text)) return null;
@@ -38,6 +40,14 @@ class ScoreService {
             return null;
         }
 
+        // Check if submission is within allowed time window (9:00-23:59)
+        const now = new Date();
+        const currentHour = now.getHours();
+        if (currentHour < 9) {
+            await message.reply('Nova runda počinje u 9:00 ujutru. Pokušaj ponovo nakon 9:00!');
+            return null;
+        }
+        
         // Validate game number
         const todaysGameNumber = await this.getTodaysGameNumber();
         if (todaysGameNumber && scoreData.gameNumber !== todaysGameNumber) {
@@ -90,12 +100,14 @@ class ScoreService {
     static parseTimeGuessrScore(text) {
         try {
             const lines = text.trim().split('\n');
-            const headerMatch = lines[0].match(/TimeGuessr #(\d+)\s+([\d,]+)\/([\d,]+)/);
+            
+            const headerMatch = lines[0].match(/TimeGuessr #(\d+)\s+([\d,.]+)\/([\d,.]+)/);
             if (!headerMatch) return null;
 
             const gameNumber = parseInt(headerMatch[1], 10);
-            const score = parseInt(headerMatch[2].replace(/,/g, ''), 10);
-            const maxScore = parseInt(headerMatch[3].replace(/,/g, ''), 10);
+           
+            const score = parseInt(headerMatch[2].replace(/[,.]/g, ''), 10);
+            const maxScore = parseInt(headerMatch[3].replace(/[,.]/g, ''), 10);
             const percentage = parseFloat(((score / maxScore) * 100).toFixed(1));
 
             const rounds = [];
