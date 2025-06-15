@@ -40,13 +40,20 @@ class ScoreService {
             return null;
         }
 
-        // Check if submission is within allowed time window (9:00-23:59)
+		// Check if the message was sent before 9 AM Sarajevo time
         const now = new Date();
-        const currentHour = now.getHours();
-        console.log(`Submission attempt - UTC: ${now.toISOString()}, Local hour: ${currentHour}, Sarajevo time: ${now.toLocaleString('en-US', { timeZone: 'Europe/Sarajevo' })}`);
+        const currentHour = parseInt(now.toLocaleString('en-US', {
+            timeZone: 'Europe/Sarajevo',
+            hour: 'numeric',
+            hour12: false
+        }));
 
         if (currentHour < 9) {
-            await message.reply('Nova runda počinje u 9:00 ujutru. Pokušaj ponovo nakon 9:00!');
+            const currentMinute = parseInt(now.toLocaleString('en-US', {
+                timeZone: 'Europe/Sarajevo',
+                minute: 'numeric'
+            }));
+            await message.reply(`Nova runda počinje u 9:00 ujutru. Trenutno je ${currentHour}:${currentMinute.toString().padStart(2, '0')} . Pokušaj ponovo nakon 9:00!`);
             return null;
         }
         
