@@ -43,6 +43,8 @@ class ScoreService {
         // Check if submission is within allowed time window (9:00-23:59)
         const now = new Date();
         const currentHour = now.getHours();
+        console.log(`Submission attempt - UTC: ${now.toISOString()}, Local hour: ${currentHour}, Sarajevo time: ${now.toLocaleString('en-US', { timeZone: 'Europe/Sarajevo' })}`);
+
         if (currentHour < 9) {
             await message.reply('Nova runda počinje u 9:00 ujutru. Pokušaj ponovo nakon 9:00!');
             return null;

@@ -8,7 +8,18 @@ require('./config/db');
 
 
 const app = express();
-app.use(express.json()); 
+app.use(express.json());
+
+console.log('=== SERVER TIMEZONE DEBUG ===');
+const startupTime = new Date();
+console.log('Server startup time (UTC):', startupTime.toISOString());
+console.log('Server startup time (local):', startupTime.toString());
+console.log('Server timezone offset (minutes from UTC):', startupTime.getTimezoneOffset());
+console.log('Server timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+
+console.log('Sarajevo time at startup:', startupTime.toLocaleString('en-US', { timeZone: 'Europe/Sarajevo' }));
+console.log('==============================');
 
 // Cron job endpoint
 app.post('/api/cron/weekly-points', async (req, res) => {
