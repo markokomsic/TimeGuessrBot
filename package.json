@@ -13,7 +13,7 @@
         "node-cron": "^4.0.7",
         "pg": "^8.16.0",
         "qrcode-terminal": "^0.12.0",
-        "whatsapp-web.js": "^1.28.0",
+        "whatsapp-web.js": "^1.31.0",
         "wwebjs-mongo": "^1.1.0"
     }
 }

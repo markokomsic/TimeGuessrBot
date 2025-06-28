@@ -70,9 +70,12 @@ mongoose.connect(process.env.MONGODB_URI).then(() => {
         console.log('✅ Session saved to MongoDB!');
     });
 
-    client.on('ready', () => {
+    client.on('ready', async () => {
         console.log('🚀 WhatsApp client is ready!');
+        setTimeout(() => {
+        }, 3000);
     });
+
 
     const MessageHandler = require('./handlers/messageHandler');
     client.on('message_create', async message => {
